@@ -834,6 +834,70 @@ body::after {
 .mb-md { margin-bottom: var(--sp-md); }
 .w-full { width: 100%; }
 
+/* ============================================================
+   TripDetail
+   ============================================================ */
+.trip-detail { display: flex; flex-direction: column; gap: var(--sp-sm); }
+
+.trip-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+}
+
+.trip-detail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+}
+
+.trip-detail-map {
+  height: 280px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+}
+
+/* Detail card rows */
+.trip-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  padding: 14px var(--sp-lg);
+}
+.trip-detail-row-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+.trip-detail-row-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.trip-detail-row-text {
+  font-size: 14px;
+  flex: 1;
+  text-align: right;
+}
+.trip-detail-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 0 var(--sp-lg);
+}
+.trip-detail-route-line {
+  height: 16px;
+  width: 1px;
+  background: var(--glass-border);
+  margin-left: calc(var(--sp-lg) + 9px);
+}
+
 
 /* ============================================================
    Spritmonitor (period-nav, month-summary, yearly-stats, calc-grid)
