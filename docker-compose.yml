@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  myauto:
+    build: .
+    container_name: myauto
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ${DATA_PATH:-./data}:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATA_DIR=/app/data
+    labels:
+      - "net.unraid.docker.icon=https://cdn-icons-png.flaticon.com/512/3202/3202926.png"
+      - "net.unraid.docker.webui=http://[IP]:[PORT:3000]"

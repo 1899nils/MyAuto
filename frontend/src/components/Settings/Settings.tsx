@@ -1,0 +1,274 @@
+import { useState, useEffect } from 'react';
+import { useTripStore } from '../../store/tripStore';
+import { ClassificationRule } from '../../types';
+
+const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+export function Settings() {
+  const { settings, saveSettings, loadSettings } = useTripStore();
+  const [mapsKey, setMapsKey] = useState('');
+  const [homeAddress, setHomeAddress] = useState('');
+  const [workAddress, setWorkAddress] = useState('');
+  const [defaultCategory, setDefaultCategory] = useState<'private' | 'business' | 'ask'>('ask');
+  const [rules, setRules] = useState<ClassificationRule[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setMapsKey(settings.googleMapsApiKey || '');
+      setHomeAddress(settings.homeAddress || '');
+      setWorkAddress(settings.workAddress || '');
+      setDefaultCategory(settings.defaultCategory || 'ask');
+      setRules(settings.classificationRules || []);
+    }
+  }, [settings]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await saveSettings({
+        googleMapsApiKey: mapsKey,
+        homeAddress,
+        workAddress,
+        defaultCategory,
+        classificationRules: rules,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function addRule() {
+    setRules(r => [...r, {
+      name: 'Neue Regel',
+      type: 'time',
+      start_hour: 7,
+      end_hour: 19,
+      days: [1, 2, 3, 4, 5],
+      category: 'business',
+      priority: r.length,
+    }]);
+  }
+
+  function removeRule(idx: number) {
+    setRules(r => r.filter((_, i) => i !== idx));
+  }
+
+  function updateRule(idx: number, patch: Partial<ClassificationRule>) {
+    setRules(r => r.map((rule, i) => i === idx ? { ...rule, ...patch } : rule));
+  }
+
+  function toggleDay(ruleIdx: number, day: number) {
+    const rule = rules[ruleIdx];
+    const days = rule.days.includes(day)
+      ? rule.days.filter(d => d !== day)
+      : [...rule.days, day].sort();
+    updateRule(ruleIdx, { days });
+  }
+
+  async function handleUnpairBluetooth() {
+    await saveSettings({ bluetoothDeviceId: undefined, bluetoothDeviceName: undefined });
+    await loadSettings();
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1>Einstellungen</h1>
+        <p>MyAuto konfigurieren</p>
+      </div>
+
+      {/* Maps API */}
+      <div className="glass card mb-md">
+        <div className="card-title">Google Maps</div>
+        <div className="form-group">
+          <label className="form-label">API Key</label>
+          <input
+            type="password"
+            className="form-input"
+            value={mapsKey}
+            onChange={e => setMapsKey(e.target.value)}
+            placeholder="AIzaSy…"
+          />
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
+            Benötigt: Maps JavaScript API, Directions API, Geocoding API.
+            Kostenlos bis 200$/Monat Guthaben.
+          </p>
+        </div>
+      </div>
+
+      {/* Addresses */}
+      <div className="glass card mb-md">
+        <div className="card-title">Adressen</div>
+        <div className="form-group">
+          <label className="form-label">Heimadresse</label>
+          <input className="form-input" value={homeAddress} onChange={e => setHomeAddress(e.target.value)} placeholder="Musterstraße 1, 12345 Stadt" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Arbeitsadresse</label>
+          <input className="form-input" value={workAddress} onChange={e => setWorkAddress(e.target.value)} placeholder="Firmenstraße 2, 12345 Stadt" />
+        </div>
+      </div>
+
+      {/* Bluetooth */}
+      <div className="glass card mb-md">
+        <div className="card-title">Bluetooth Auto-Kopplung</div>
+        {settings?.bluetoothDeviceId ? (
+          <div>
+            <div className="flex-between mb-md">
+              <div>
+                <div style={{ fontWeight: 600 }}>🔵 {settings.bluetoothDeviceName || 'Gekoppeltes Auto'}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{settings.bluetoothDeviceId}</div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={handleUnpairBluetooth}>Entkoppeln</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              Fahrten starten automatisch wenn dein Gerät mit diesem Bluetooth-Gerät verbunden ist.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
+              Koppel dein Auto, um Fahrten automatisch zu starten/stoppen wenn du dich verbindest.
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+              Das Koppeln ist über den "Auto koppeln" Button auf dem Dashboard möglich.
+              Web Bluetooth ist in Chrome/Edge verfügbar (nicht in Safari/Firefox).
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Default Category */}
+      <div className="glass card mb-md">
+        <div className="card-title">Standard-Klassifizierung</div>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
+          Was passiert, wenn keine Zeitregel greift?
+        </p>
+        <div className="toggle-group">
+          {[
+            { value: 'ask', label: '❓ Fragen' },
+            { value: 'business', label: '💼 Beruflich' },
+            { value: 'private', label: '🏠 Privat' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              className={`toggle-btn ${defaultCategory === opt.value ? 'active' : ''}`}
+              onClick={() => setDefaultCategory(opt.value as typeof defaultCategory)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Classification Rules */}
+      <div className="glass card mb-md">
+        <div className="flex-between mb-md">
+          <span className="card-title" style={{ marginBottom: 0 }}>Zeitbasierte Regeln</span>
+          <button className="btn btn-ghost btn-sm" onClick={addRule}>+ Regel</button>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+          Fahrten werden automatisch klassifiziert wenn Uhrzeit und Wochentag übereinstimmen.
+        </p>
+
+        {rules.length === 0 && (
+          <p style={{ fontSize: 14, color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>
+            Keine Regeln definiert
+          </p>
+        )}
+
+        {rules.map((rule, idx) => (
+          <div key={idx} className="glass-sm" style={{ padding: 'var(--sp-md)', marginBottom: 'var(--sp-sm)' }}>
+            <div className="flex-between mb-sm">
+              <input
+                className="form-input"
+                style={{ flex: 1, marginRight: 8, padding: '8px 12px', fontSize: 14 }}
+                value={rule.name}
+                onChange={e => updateRule(idx, { name: e.target.value })}
+              />
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', fontSize: 18 }}
+                onClick={() => removeRule(idx)}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Days */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+              {DAYS.map((day, d) => (
+                <button
+                  key={d}
+                  onClick={() => toggleDay(idx, d)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 'var(--r-full)',
+                    border: '1px solid',
+                    borderColor: rule.days.includes(d) ? 'var(--accent)' : 'var(--glass-border)',
+                    background: rule.days.includes(d) ? 'rgba(0,122,255,0.2)' : 'transparent',
+                    color: rule.days.includes(d) ? 'var(--accent)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: 'var(--font)',
+                  }}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+
+            {/* Time range */}
+            <div className="flex gap-sm" style={{ alignItems: 'center', marginBottom: 8 }}>
+              <select
+                className="form-select"
+                value={rule.start_hour}
+                onChange={e => updateRule(idx, { start_hour: Number(e.target.value) })}
+                style={{ flex: 1, padding: '8px 12px', fontSize: 14 }}
+              >
+                {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+              </select>
+              <span className="text-secondary">–</span>
+              <select
+                className="form-select"
+                value={rule.end_hour}
+                onChange={e => updateRule(idx, { end_hour: Number(e.target.value) })}
+                style={{ flex: 1, padding: '8px 12px', fontSize: 14 }}
+              >
+                {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+              </select>
+
+              <div className="toggle-group" style={{ flex: 1 }}>
+                {(['business', 'private'] as const).map(cat => (
+                  <button
+                    key={cat}
+                    className={`toggle-btn ${rule.category === cat ? 'active' : ''}`}
+                    onClick={() => updateRule(idx, { category: cat })}
+                    style={{ fontSize: 13 }}
+                  >
+                    {cat === 'business' ? '💼' : '🏠'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Save button */}
+      <button
+        className={`btn btn-full btn-lg ${saved ? 'btn-success' : 'btn-primary'}`}
+        onClick={handleSave}
+        disabled={saving}
+        style={{ marginBottom: 'var(--sp-xl)' }}
+      >
+        {saving ? '⏳ Speichere…' : saved ? '✓ Gespeichert!' : 'Einstellungen speichern'}
+      </button>
+    </div>
+  );
+}
