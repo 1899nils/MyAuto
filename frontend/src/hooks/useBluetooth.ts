@@ -1,11 +1,14 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useTripStore } from '../store/tripStore';
 
 const POLL_INTERVAL = 30_000; // 30 seconds
 
+export type BluetoothStatus = 'unsupported' | 'no-device' | 'waiting' | 'connected';
+
 export function useBluetooth() {
   const { settings, activeTrip, isTracking, startTrip } = useTripStore();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [status, setStatus] = useState<BluetoothStatus>('no-device');
   interface BtDevice { id: string; name?: string; gatt?: { connected: boolean }; }
   interface BtApi {
     requestDevice(opts: { acceptAllDevices: boolean; optionalServices?: string[] }): Promise<BtDevice>;
@@ -14,6 +17,12 @@ export function useBluetooth() {
 
   const supported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
   const bt = () => (navigator as Navigator & { bluetooth: BtApi }).bluetooth;
+
+  useEffect(() => {
+    if (!supported) { setStatus('unsupported'); return; }
+    if (!settings?.bluetoothDeviceId) { setStatus('no-device'); return; }
+    setStatus('waiting');
+  }, [supported, settings?.bluetoothDeviceId]);
 
   const pairDevice = useCallback(async () => {
     if (!supported) throw new Error('Web Bluetooth not supported in this browser');
@@ -40,6 +49,12 @@ export function useBluetooth() {
 
       const devices = await btApi.getDevices();
       const carDevice = devices.find((d) => d.id === settings.bluetoothDeviceId);
+
+      if (carDevice?.gatt?.connected) {
+        setStatus('connected');
+      } else {
+        setStatus('waiting');
+      }
 
       if (carDevice?.gatt?.connected && !isTracking) {
         // Car BT is connected and no active trip → auto start
@@ -77,7 +92,7 @@ export function useBluetooth() {
     };
   }, [supported, settings?.bluetoothDeviceId, checkConnection]);
 
-  return { supported, pairDevice };
+  return { supported, status, pairDevice };
 }
 
 function getCurrentPosition(): Promise<GeolocationPosition> {

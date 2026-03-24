@@ -592,6 +592,77 @@ body::after {
 .empty-state h3 { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
 .empty-state p { font-size: 14px; }
 
+/* ---- Form inputs (AddTripModal) ---- */
+.form-group { margin-bottom: var(--sp-md); }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s var(--ease);
+  color-scheme: dark;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-tertiary); }
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-sm);
+}
+.add-trip-modal { max-height: 90dvh; overflow-y: auto; width: min(480px, 100%); }
+
+/* ---- Bluetooth status badge ---- */
+.bt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  font-size: 13px;
+  font-weight: 500;
+}
+.bt-status--waiting {
+  background: rgba(52, 199, 89, 0.12);
+  color: var(--green);
+  border: 1px solid rgba(52, 199, 89, 0.25);
+}
+.bt-status--connected {
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--accent-light);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+}
+.bt-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: bt-blink 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.bt-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+@keyframes bt-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
 /* Utility */
 .flex { display: flex; }
 .flex-center { display: flex; align-items: center; justify-content: center; }
