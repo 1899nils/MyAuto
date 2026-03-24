@@ -73,12 +73,12 @@
   }
   html { background: #e8f4fd; }
   .tab-bar {
-    background: rgba(255,255,255,0.65);
+    background: rgba(240, 245, 255, 0.72);
     border-color: rgba(0,0,0,0.10);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.9) inset;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
   }
   .tab-item { color: rgba(0,0,0,0.35); }
-  .tab-item.active { color: rgba(0,0,0,0.90); background: rgba(0,0,0,0.08); }
+  .tab-item.active { color: rgba(0,0,0,0.88); background: rgba(0,0,0,0.07); }
 }
 
 /* ---- Reset ---- */
@@ -245,32 +245,51 @@ body::after {
 /* Mobile tab bar – floating Liquid Glass pill */
 .tab-bar {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  /* Direkt über dem Home-Indikator, kein extra Gap im Browser */
+  bottom: env(safe-area-inset-bottom, 0px);
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 40px);
+  width: calc(100% - 32px);
   max-width: 420px;
-  height: 62px;
-  padding: 0 6px;
+  height: 66px;
+  padding: 0 5px;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  /* Liquid Glass */
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
-  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
+  /* Authentisches Apple Liquid Glass */
+  background: rgba(30, 30, 60, 0.55);
+  backdrop-filter: blur(48px) saturate(220%) brightness(1.15);
+  -webkit-backdrop-filter: blur(48px) saturate(220%) brightness(1.15);
+  /* Obere Glanz-Linie + subtiler Rand */
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  border-radius: 22px 22px 0 0;
+  border-bottom: none;
   z-index: 100;
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.20) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.10) inset;
+    0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 -8px 32px rgba(0, 0, 0, 0.28);
 }
 
+/* Im Browser (kein Safe Area) – kleiner abgerundeter Pill mit Gap */
+@media not all and (display-mode: standalone) {
+  .tab-bar {
+    bottom: 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.40),
+      0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  }
+}
+
+/* Standalone PWA – füllt bis zum unteren Rand, merged mit Safe Area */
 @media (display-mode: standalone) {
   .tab-bar {
-    bottom: calc(env(safe-area-inset-bottom, 16px) + 12px);
+    bottom: 0;
+    border-radius: 22px 22px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(66px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -279,21 +298,25 @@ body::after {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 14px;
-  border-radius: 999px;
+  padding: 8px 12px;
+  border-radius: 14px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.45);
-  transition: color 0.2s var(--ease), background 0.2s var(--ease), transform 0.18s var(--spring);
+  color: rgba(255, 255, 255, 0.40);
+  transition: color 0.18s var(--ease), background 0.18s var(--ease), transform 0.15s var(--spring);
   user-select: none;
   flex: 1;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.tab-item:active { transform: scale(0.88); }
+.tab-item:active { transform: scale(0.85); }
 
+/* Aktiver Tab: dezenter heller Hintergrund wie bei Apple */
 .tab-item.active {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.14) inset,
+    0 0 0 0.5px rgba(255,255,255,0.10);
 }
 
 .tab-item .tab-icon { font-size: 22px; line-height: 1; }
@@ -306,14 +329,15 @@ body::after {
   overflow-x: hidden;
   padding: var(--sp-xl);
   padding-top: calc(var(--sp-xl) + env(safe-area-inset-top));
-  /* 62px pill + 12px gap + safe area + extra breathing room */
-  padding-bottom: calc(62px + 12px + env(safe-area-inset-bottom, 0px) + var(--sp-xl));
+  /* Platz für Pill (66px) + Gap (8px) im Browser */
+  padding-bottom: calc(66px + 8px + var(--sp-xl));
   scroll-behavior: smooth;
 }
 
 @media (display-mode: standalone) {
   .main-content {
-    padding-bottom: calc(62px + 12px + env(safe-area-inset-bottom, 16px) + var(--sp-xl));
+    /* Platz für Pill + Safe Area in PWA */
+    padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px) + var(--sp-xl));
   }
 }
 
