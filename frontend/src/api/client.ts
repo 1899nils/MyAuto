@@ -34,6 +34,8 @@ export const api = {
   addManualTrip: (data: {
     startTime: number; endTime: number;
     startAddress?: string; endAddress?: string;
+    startLat?: number; startLng?: number;
+    endLat?: number; endLng?: number;
     distanceKm?: number; durationSeconds?: number;
     category: TripCategory; notes?: string;
   }) => req<Trip>('/trips', { method: 'POST', body: JSON.stringify(data) }),
