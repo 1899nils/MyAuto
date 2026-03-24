@@ -3,15 +3,32 @@ import db from '../db/database';
 
 const router = Router();
 
-// GET /api/fuel
+function monthBounds(year: number, month: number) {
+  const start = new Date(year, month - 1, 1).getTime();
+  const end   = new Date(year, month, 1).getTime();
+  return { start, end };
+}
+
+function yearBounds(year: number) {
+  const start = new Date(year, 0, 1).getTime();
+  const end   = new Date(year + 1, 0, 1).getTime();
+  return { start, end };
+}
+
+// GET /api/fuel?year=2026&month=3   (month optional, 1-based)
 router.get('/', (req: Request, res: Response) => {
-  const { year } = req.query;
+  const year  = req.query.year  ? Number(req.query.year)  : null;
+  const month = req.query.month ? Number(req.query.month) : null;
+
   let query = 'SELECT * FROM fuel_entries WHERE 1=1';
   const params: unknown[] = [];
 
-  if (year) {
-    const start = new Date(`${year}-01-01`).getTime();
-    const end = new Date(`${Number(year) + 1}-01-01`).getTime();
+  if (year && month) {
+    const { start, end } = monthBounds(year, month);
+    query += ' AND date >= ? AND date < ?';
+    params.push(start, end);
+  } else if (year) {
+    const { start, end } = yearBounds(year);
     query += ' AND date >= ? AND date < ?';
     params.push(start, end);
   }
@@ -21,41 +38,33 @@ router.get('/', (req: Request, res: Response) => {
   res.json({ entries });
 });
 
-// GET /api/fuel/stats
-router.get('/stats', (_req: Request, res: Response) => {
-  const currentYear = new Date().getFullYear();
-  const yearStart = new Date(`${currentYear}-01-01`).getTime();
-  const yearEnd = new Date(`${currentYear + 1}-01-01`).getTime();
+// GET /api/fuel/stats?year=2026   (always yearly for meaningful averages)
+router.get('/stats', (req: Request, res: Response) => {
+  const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+  const { start, end } = yearBounds(year);
 
-  // All entries for current year, ascending for consumption calc
   const entries = db.prepare(
     'SELECT * FROM fuel_entries WHERE date >= ? AND date < ? ORDER BY date ASC'
-  ).all(yearStart, yearEnd) as {
+  ).all(start, end) as {
     id: number; date: number; liters: number;
     price_per_liter: number; total_cost: number; odometer_km: number | null;
   }[];
 
   const totalLiters = entries.reduce((s, e) => s + e.liters, 0);
-  const totalCost = entries.reduce((s, e) => s + e.total_cost, 0);
-  const avgPrice = totalLiters > 0 ? totalCost / totalLiters : 0;
+  const totalCost   = entries.reduce((s, e) => s + e.total_cost, 0);
+  const avgPrice    = totalLiters > 0 ? totalCost / totalLiters : 0;
 
-  // Consumption: calc per 100km between consecutive entries with odometer
   const withOdo = entries.filter(e => e.odometer_km != null);
   let avgConsumption: number | null = null;
   if (withOdo.length >= 2) {
-    let totalKm = 0;
-    let totalL = 0;
+    let totalKm = 0, totalL = 0;
     for (let i = 1; i < withOdo.length; i++) {
       const km = withOdo[i].odometer_km! - withOdo[i - 1].odometer_km!;
-      if (km > 0) {
-        totalKm += km;
-        totalL += withOdo[i].liters;
-      }
+      if (km > 0) { totalKm += km; totalL += withOdo[i].liters; }
     }
     if (totalKm > 0) avgConsumption = (totalL / totalKm) * 100;
   }
 
-  // Cost per km
   const totalKmDriven =
     withOdo.length >= 2
       ? withOdo[withOdo.length - 1].odometer_km! - withOdo[0].odometer_km!
@@ -63,14 +72,7 @@ router.get('/stats', (_req: Request, res: Response) => {
   const costPerKm =
     totalKmDriven && totalKmDriven > 0 ? totalCost / totalKmDriven : null;
 
-  res.json({
-    totalLiters,
-    totalCost,
-    avgPrice,
-    avgConsumption,
-    costPerKm,
-    fillCount: entries.length,
-  });
+  res.json({ totalLiters, totalCost, avgPrice, avgConsumption, costPerKm, fillCount: entries.length, year });
 });
 
 // POST /api/fuel
