@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
-import { loadGoogleMaps } from '../../utils/maps';
 
 export interface PlaceResult {
   address: string;
@@ -17,51 +16,61 @@ interface Props {
 }
 
 export function AddressSearch({ value, onChange, onPlace, placeholder, required }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const acRef   = useRef<google.maps.places.Autocomplete | null>(null);
   const settings = useTripStore(s => s.settings);
+  const [geocoding, setGeocoding] = useState(false);
+  const [resolved, setResolved] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!settings?.googleMapsApiKey || !inputRef.current) return;
-
-    loadGoogleMaps(settings.googleMapsApiKey).then(() => {
-      if (!inputRef.current || acRef.current) return;
-
-      acRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-        fields: ['formatted_address', 'geometry'],
-        componentRestrictions: { country: 'de' },
-      });
-
-      acRef.current.addListener('place_changed', () => {
-        const place = acRef.current!.getPlace();
-        if (place.geometry?.location && place.formatted_address) {
-          onPlace({
-            address: place.formatted_address,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-          });
-        }
-      });
-    });
-
-    return () => {
-      if (acRef.current) {
-        google.maps.event.clearInstanceListeners(acRef.current);
-        acRef.current = null;
+  const geocode = useCallback(async (address: string) => {
+    if (!settings?.googleMapsApiKey || !address.trim() || address.trim().length < 5) return;
+    setGeocoding(true);
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${settings.googleMapsApiKey}&language=de&region=de`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.results?.[0]) {
+        const r = data.results[0];
+        onPlace({
+          address: r.formatted_address,
+          lat: r.geometry.location.lat,
+          lng: r.geometry.location.lng,
+        });
+        setResolved(true);
       }
-    };
-  }, [settings?.googleMapsApiKey]);
+    } catch {
+      // ignore network errors
+    } finally {
+      setGeocoding(false);
+    }
+  }, [settings?.googleMapsApiKey, onPlace]);
+
+  function handleChange(v: string) {
+    onChange(v);
+    setResolved(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (v.trim().length >= 5) {
+      debounceRef.current = setTimeout(() => geocode(v), 900);
+    }
+  }
 
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      className="form-input"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      required={required}
-      autoComplete="off"
-    />
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        className="form-input"
+        value={value}
+        onChange={e => handleChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        autoComplete="off"
+        style={{ paddingRight: 36 }}
+      />
+      <span style={{
+        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+        fontSize: 14, opacity: 0.7, pointerEvents: 'none', lineHeight: 1,
+      }}>
+        {geocoding ? '⏳' : resolved ? '📍' : ''}
+      </span>
+    </div>
   );
 }

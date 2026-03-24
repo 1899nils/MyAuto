@@ -13,7 +13,7 @@ export function loadGoogleMaps(apiKey: string): Promise<void> {
     }
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
     script.async = true;
     script.onload = () => { mapsLoaded = true; resolve(); };
     script.onerror = () => reject(new Error('Google Maps failed to load'));
