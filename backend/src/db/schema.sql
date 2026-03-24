@@ -51,3 +51,16 @@ VALUES (1, 'Arbeitszeit Mo-Fr', 'time', 7, 19, '[1,2,3,4,5]', 'business', 0);
 
 CREATE INDEX IF NOT EXISTS idx_trips_start_time ON trips(start_time);
 CREATE INDEX IF NOT EXISTS idx_track_points_trip_id ON track_points(trip_id);
+
+CREATE TABLE IF NOT EXISTS fuel_entries (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  date             INTEGER NOT NULL,
+  liters           REAL NOT NULL,
+  price_per_liter  REAL NOT NULL,
+  total_cost       REAL NOT NULL,
+  odometer_km      REAL,
+  notes            TEXT,
+  created_at       INTEGER DEFAULT (unixepoch() * 1000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fuel_entries_date ON fuel_entries(date);

@@ -5,6 +5,7 @@ import path from 'path';
 import tripsRouter from './routes/trips';
 import trackpointsRouter from './routes/trackpoints';
 import settingsRouter from './routes/settings';
+import fuelRouter from './routes/fuel';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api/trips', tripsRouter);
 app.use('/api/trips/:tripId/points', trackpointsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/fuel', fuelRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, '../../frontend/dist');
