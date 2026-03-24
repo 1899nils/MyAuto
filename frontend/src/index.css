@@ -283,17 +283,18 @@ body::after {
   }
 }
 
-/* Standalone PWA – füllt bis zum unteren Rand, merged mit Safe Area */
+/* Standalone PWA – Pill schwebt knapp über dem Home-Indikator */
 @media (display-mode: standalone) {
   .tab-bar {
-    bottom: 0;
-    left: 0;
-    transform: none;
-    width: 100%;
-    max-width: none;
-    border-radius: 22px 22px 0 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    height: calc(66px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 16px) + 8px);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.40),
+      0 1px 0 rgba(255, 255, 255, 0.18) inset;
+  }
+  .main-content {
+    padding-bottom: calc(66px + env(safe-area-inset-bottom, 16px) + 8px + 16px);
   }
 }
 
