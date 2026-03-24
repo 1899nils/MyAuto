@@ -35,14 +35,15 @@ export function TripDetail() {
   useEffect(() => {
     if (!trip || !mapRef.current || !settings?.googleMapsApiKey) return;
 
-    // Reset map instance when trip changes
     mapInstanceRef.current = null;
+
+    const t = trip; // narrowed, non-null reference for closures
 
     loadGoogleMaps(settings.googleMapsApiKey).then(() => {
       if (!mapRef.current) return;
 
-      const center = trip.start_lat && trip.start_lng
-        ? { lat: trip.start_lat, lng: trip.start_lng }
+      const center: google.maps.LatLngLiteral = t.start_lat && t.start_lng
+        ? { lat: t.start_lat, lng: t.start_lng }
         : { lat: 51.1657, lng: 10.4515 };
 
       const map = new google.maps.Map(mapRef.current, {
@@ -56,64 +57,84 @@ export function TripDetail() {
       });
       mapInstanceRef.current = map;
 
-      // Draw route
-      const drawRouteAndMarkers = (path: { lat: number; lng: number }[]) => {
+      // ── helper: draw polyline + A/B markers ─────────────────
+      function placeMarker(pos: google.maps.LatLngLiteral, label: string, color: string) {
+        new google.maps.Marker({
+          position: pos, map, zIndex: 10,
+          title: label === 'A' ? 'Start' : 'Ziel',
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: color, fillOpacity: 1,
+            strokeColor: '#ffffff', strokeWeight: 2.5,
+            scale: 11,
+          },
+          label: { text: label, color: '#ffffff', fontWeight: '700', fontSize: '11px' },
+        });
+      }
+
+      function drawRoute(
+        path: google.maps.LatLngLiteral[],
+        startPos?: google.maps.LatLngLiteral,
+        endPos?: google.maps.LatLngLiteral,
+      ) {
         if (path.length > 1) {
           createPolyline(path).setMap(map);
           const bounds = new google.maps.LatLngBounds();
           path.forEach(p => bounds.extend(p));
           map.fitBounds(bounds, { top: 48, right: 32, bottom: 48, left: 32 });
         }
-
-        // Start marker – green circle with "A"
-        if (trip.start_lat && trip.start_lng) {
-          new google.maps.Marker({
-            position: { lat: trip.start_lat, lng: trip.start_lng },
-            map,
-            title: 'Start',
-            zIndex: 10,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: '#34C759',
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2.5,
-              scale: 11,
-            },
-            label: { text: 'A', color: '#ffffff', fontWeight: '700', fontSize: '11px' },
-          });
-        }
-
-        // End marker – red circle with "B"
-        if (trip.end_lat && trip.end_lng) {
-          new google.maps.Marker({
-            position: { lat: trip.end_lat, lng: trip.end_lng },
-            map,
-            title: 'Ziel',
-            zIndex: 10,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: '#FF3B30',
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2.5,
-              scale: 11,
-            },
-            label: { text: 'B', color: '#ffffff', fontWeight: '700', fontSize: '11px' },
-          });
-        }
-      };
-
-      if (trip.route_polyline) {
-        const path = google.maps.geometry.encoding
-          .decodePath(trip.route_polyline)
-          .map(p => ({ lat: p.lat(), lng: p.lng() }));
-        drawRouteAndMarkers(path);
-      } else {
-        api.getTrackPoints(trip.id).then(points => {
-          drawRouteAndMarkers(points.map(p => ({ lat: p.lat, lng: p.lng })));
-        });
+        const s = startPos ?? (t.start_lat && t.start_lng
+          ? { lat: t.start_lat, lng: t.start_lng } : path[0]);
+        const e = endPos ?? (t.end_lat && t.end_lng
+          ? { lat: t.end_lat, lng: t.end_lng } : path[path.length - 1]);
+        if (s) placeMarker(s, 'A', '#34C759');
+        if (e) placeMarker(e, 'B', '#FF3B30');
       }
+
+      // ── fallback 3: address strings → Directions API ─────────
+      function tryAddressRoute() {
+        const origin: string | null = t.start_address?.trim() || null;
+        const destination: string | null = t.end_address?.trim() || null;
+        if (!origin || !destination) return;
+
+        new google.maps.DirectionsService().route(
+          {
+            origin,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status !== google.maps.DirectionsStatus.OK || !result) return;
+            const leg = result.routes[0].legs[0];
+            const path = result.routes[0].overview_path
+              .map(p => ({ lat: p.lat(), lng: p.lng() }));
+            drawRoute(
+              path,
+              { lat: leg.start_location.lat(), lng: leg.start_location.lng() },
+              { lat: leg.end_location.lat(),   lng: leg.end_location.lng()   },
+            );
+          },
+        );
+      }
+
+      // ── priority 1: encoded polyline ─────────────────────────
+      if (t.route_polyline) {
+        const path = google.maps.geometry.encoding
+          .decodePath(t.route_polyline)
+          .map(p => ({ lat: p.lat(), lng: p.lng() }));
+        drawRoute(path);
+        return;
+      }
+
+      // ── priority 2: raw GPS track points ─────────────────────
+      api.getTrackPoints(t.id).then(points => {
+        if (points.length > 1) {
+          drawRoute(points.map(p => ({ lat: p.lat, lng: p.lng })));
+        } else {
+          // ── priority 3: derive route from addresses ───────────
+          tryAddressRoute();
+        }
+      });
     });
   }, [trip?.id, settings?.googleMapsApiKey]);
 
