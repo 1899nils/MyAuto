@@ -72,6 +72,13 @@
     --text-tertiary: rgba(0,0,0,0.30);
   }
   html { background: #e8f4fd; }
+  .tab-bar {
+    background: rgba(255,255,255,0.65);
+    border-color: rgba(0,0,0,0.10);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+  .tab-item { color: rgba(0,0,0,0.35); }
+  .tab-item.active { color: rgba(0,0,0,0.90); background: rgba(0,0,0,0.08); }
 }
 
 /* ---- Reset ---- */
@@ -235,40 +242,61 @@ body::after {
 
 .nav-item .nav-icon { font-size: 20px; width: 24px; text-align: center; }
 
-/* Mobile tab bar */
+/* Mobile tab bar – floating Liquid Glass pill */
 .tab-bar {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  max-width: 420px;
+  height: 62px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: var(--glass-bg-strong);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-top: 1px solid var(--glass-border);
+  /* Liquid Glass */
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
   z-index: 100;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.20) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.10) inset;
+}
+
+@media (display-mode: standalone) {
+  .tab-bar {
+    bottom: calc(env(safe-area-inset-bottom, 16px) + 12px);
+  }
 }
 
 .tab-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
+  gap: 3px;
+  padding: 8px 14px;
+  border-radius: 999px;
   cursor: pointer;
-  color: var(--text-tertiary);
-  transition: color 0.2s var(--ease), transform 0.2s var(--spring);
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.2s var(--ease), background 0.2s var(--ease), transform 0.18s var(--spring);
   user-select: none;
   flex: 1;
 }
 
-.tab-item:active { transform: scale(0.92); }
+.tab-item:active { transform: scale(0.88); }
 
-.tab-item.active { color: var(--accent); }
+.tab-item.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset;
+}
 
-.tab-item .tab-icon { font-size: 22px; }
+.tab-item .tab-icon { font-size: 22px; line-height: 1; }
 .tab-item .tab-label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
 
 /* Main content */
@@ -278,8 +306,15 @@ body::after {
   overflow-x: hidden;
   padding: var(--sp-xl);
   padding-top: calc(var(--sp-xl) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + var(--sp-xl));
+  /* 62px pill + 12px gap + safe area + extra breathing room */
+  padding-bottom: calc(62px + 12px + env(safe-area-inset-bottom, 0px) + var(--sp-xl));
   scroll-behavior: smooth;
+}
+
+@media (display-mode: standalone) {
+  .main-content {
+    padding-bottom: calc(62px + 12px + env(safe-area-inset-bottom, 16px) + var(--sp-xl));
+  }
 }
 
 @media (min-width: 768px) {
