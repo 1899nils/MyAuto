@@ -58,3 +58,23 @@ export interface TripStats {
   byCategory: { category: TripCategory; count: number; km: number | null }[];
   activeTrip: Trip | null;
 }
+
+export interface FuelEntry {
+  id: number;
+  date: number;
+  liters: number;
+  price_per_liter: number;
+  total_cost: number;
+  odometer_km: number | null;
+  notes: string | null;
+  created_at: number;
+}
+
+export interface FuelStats {
+  totalLiters: number;
+  totalCost: number;
+  avgPrice: number;
+  avgConsumption: number | null;
+  costPerKm: number | null;
+  fillCount: number;
+}

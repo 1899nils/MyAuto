@@ -5,14 +5,16 @@ import { ActiveTrip } from './components/ActiveTrip/ActiveTrip';
 import { TripHistory } from './components/TripHistory/TripHistory';
 import { TripDetail } from './components/TripDetail/TripDetail';
 import { Settings } from './components/Settings/Settings';
+import { Spritmonitor } from './components/Spritmonitor/Spritmonitor';
 import { ClassifyModal } from './components/ui/ClassifyModal';
 
-type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings';
+type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel';
 
 const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
   { view: 'dashboard', icon: '🏠', label: 'Dashboard' },
   { view: 'active', icon: '🚗', label: 'Fahrt' },
   { view: 'history', icon: '📋', label: 'Fahrten' },
+  { view: 'fuel', icon: '⛽', label: 'Sprit' },
   { view: 'settings', icon: '⚙️', label: 'Einstellungen' },
 ];
 
@@ -31,6 +33,7 @@ export default function App() {
       case 'history': return <TripHistory />;
       case 'detail': return <TripDetail />;
       case 'settings': return <Settings />;
+      case 'fuel': return <Spritmonitor />;
       default: return <Dashboard />;
     }
   }
