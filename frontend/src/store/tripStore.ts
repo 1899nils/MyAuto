@@ -26,6 +26,7 @@ interface TripStore {
   loadStats: () => Promise<void>;
   loadTrips: (params?: Parameters<typeof api.getTrips>[0]) => Promise<void>;
   startTrip: (data?: { startLat?: number; startLng?: number; bluetoothDevice?: string }) => Promise<void>;
+  addManualTrip: (data: Parameters<typeof api.addManualTrip>[0]) => Promise<Trip>;
   endTrip: (tripId: number, data: Parameters<typeof api.updateTrip>[1]) => Promise<void>;
   addPoint: (point: Omit<TrackPoint, 'id' | 'trip_id'>) => void;
   flushPoints: () => Promise<void>;
@@ -68,6 +69,12 @@ export const useTripStore = create<TripStore>((set, get) => ({
   startTrip: async (data = {}) => {
     const trip = await api.startTrip(data);
     set({ activeTrip: trip, isTracking: true, trackPoints: [], pendingPoints: [] });
+  },
+
+  addManualTrip: async (data) => {
+    const trip = await api.addManualTrip(data);
+    set((s) => ({ trips: [trip, ...s.trips], totalTrips: s.totalTrips + 1 }));
+    return trip;
   },
 
   endTrip: async (tripId, data) => {

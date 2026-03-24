@@ -31,6 +31,13 @@ export const api = {
   startTrip: (data: { startLat?: number; startLng?: number; bluetoothDevice?: string }) =>
     req<Trip>('/trips', { method: 'POST', body: JSON.stringify(data) }),
 
+  addManualTrip: (data: {
+    startTime: number; endTime: number;
+    startAddress?: string; endAddress?: string;
+    distanceKm?: number; durationSeconds?: number;
+    category: TripCategory; notes?: string;
+  }) => req<Trip>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+
   updateTrip: (id: number, data: Partial<{
     endTime: number; endLat: number; endLng: number; endAddress: string; startAddress: string;
     distanceKm: number; durationSeconds: number; trafficDelaySeconds: number;

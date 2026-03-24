@@ -3,6 +3,7 @@ import { useTripStore } from '../../store/tripStore';
 import { TripCategory, Trip } from '../../types';
 import { formatDate, formatTime, formatKm, formatDuration, categoryLabel } from '../../utils/format';
 import { api } from '../../api/client';
+import { AddTripModal } from '../ui/AddTripModal';
 
 const CATEGORIES: { value: TripCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'Alle' },
@@ -16,6 +17,7 @@ export function TripHistory() {
   const [filter, setFilter] = useState<TripCategory | 'all'>('all');
   const [monthOffset, setMonthOffset] = useState(0);
   const [page, setPage] = useState(0);
+  const [showAddModal, setShowAddModal] = useState(false);
   const PAGE_SIZE = 20;
 
   const now = new Date();
@@ -41,17 +43,37 @@ export function TripHistory() {
 
   const monthLabel = targetMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 
+  function handleCreated() {
+    setShowAddModal(false);
+    loadTrips({
+      category: filter === 'all' ? undefined : filter,
+      from: targetMonth.getTime(),
+      to: nextMonth.getTime(),
+      limit: PAGE_SIZE,
+      offset: 0,
+    });
+    setPage(0);
+  }
+
   return (
     <div>
+      {showAddModal && (
+        <AddTripModal onClose={() => setShowAddModal(false)} onCreated={handleCreated} />
+      )}
       <div className="page-header">
         <div className="flex-between">
           <div>
             <h1>Fahrtenbuch</h1>
             <p>{totalTrips} Fahrten gesamt</p>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv()}>
-            ⬇ CSV Export
-          </button>
+          <div style={{ display: 'flex', gap: 'var(--sp-xs)' }}>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
+              + Fahrt
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv()}>
+              ⬇ CSV
+            </button>
+          </div>
         </div>
       </div>
 

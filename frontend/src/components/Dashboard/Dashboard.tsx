@@ -6,7 +6,7 @@ import { Trip } from '../../types';
 
 export function Dashboard() {
   const { stats, trips, settings, activeTrip, isTracking, loadStats, loadTrips, startTrip, endTrip, trackPoints, setView } = useTripStore();
-  const { pairDevice, supported: btSupported } = useBluetooth();
+  const { pairDevice, supported: btSupported, status: btStatus } = useBluetooth();
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
   const [elapsed, setElapsed] = useState('');
@@ -98,18 +98,27 @@ export function Dashboard() {
           <button className="btn btn-success btn-lg btn-full" onClick={handleStartTrip} disabled={starting}>
             {starting ? '⏳ Starte…' : '▶ Fahrt starten'}
           </button>
-          {btSupported && !settings?.bluetoothDeviceId && (
+          {btStatus !== 'unsupported' && (
             <div className="mt-md">
-              <button className="btn btn-ghost btn-sm" onClick={handlePairBluetooth}>
-                🔵 Auto koppeln für Auto-Start
-              </button>
+              {btStatus === 'no-device' && (
+                <button className="btn btn-ghost btn-sm" onClick={handlePairBluetooth}>
+                  🔵 Auto koppeln für Auto-Tracking
+                </button>
+              )}
+              {btStatus === 'waiting' && (
+                <div className="bt-status bt-status--waiting">
+                  <span className="bt-pulse" />
+                  Auto-Tracking aktiv – wartet auf Verbindung
+                </div>
+              )}
+              {btStatus === 'connected' && (
+                <div className="bt-status bt-status--connected">
+                  <span className="bt-dot" />
+                  Verbunden mit {settings?.bluetoothDeviceName || 'Auto'} – Fahrt startet automatisch
+                </div>
+              )}
               {btError && <p className="text-red mt-sm" style={{ fontSize: 13 }}>{btError}</p>}
             </div>
-          )}
-          {settings?.bluetoothDeviceId && (
-            <p className="text-secondary mt-sm" style={{ fontSize: 13 }}>
-              🔵 Verbunden mit: {settings.bluetoothDeviceName || 'Auto'}
-            </p>
           )}
         </div>
       )}

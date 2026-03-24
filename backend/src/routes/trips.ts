@@ -96,18 +96,49 @@ router.get('/:id', (req: Request, res: Response) => {
   res.json(trip);
 });
 
-// POST /api/trips - start new trip
+// POST /api/trips - start new trip or create complete manual trip
 router.post('/', (req: Request, res: Response) => {
-  const { startLat, startLng, bluetoothDevice } = req.body;
-  const now = Date.now();
+  const {
+    startLat, startLng, bluetoothDevice,
+    // Manual trip fields (all optional – if endTime is provided, trip is saved as complete)
+    startTime, endTime, startAddress, endAddress,
+    endLat, endLng, distanceKm, durationSeconds, category: manualCategory, notes,
+  } = req.body;
 
-  // Auto-classify based on rules
-  const category = autoClassify(now);
+  const now = Date.now();
+  const tripStartTime = startTime ? Number(startTime) : now;
+
+  // Use provided category or auto-classify
+  const category = manualCategory || autoClassify(tripStartTime);
+
+  // Calculate duration if not provided but start+end times are given
+  const calcDuration = endTime && !durationSeconds
+    ? Math.round((Number(endTime) - tripStartTime) / 1000)
+    : durationSeconds || null;
 
   const result = db.prepare(`
-    INSERT INTO trips (start_time, start_lat, start_lng, bluetooth_device, category, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(now, startLat || null, startLng || null, bluetoothDevice || null, category, now);
+    INSERT INTO trips (
+      start_time, start_lat, start_lng, bluetooth_device, category, created_at,
+      end_time, end_lat, end_lng, start_address, end_address,
+      distance_km, duration_seconds, notes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    tripStartTime,
+    startLat || null,
+    startLng || null,
+    bluetoothDevice || null,
+    category,
+    now,
+    endTime ? Number(endTime) : null,
+    endLat || null,
+    endLng || null,
+    startAddress || null,
+    endAddress || null,
+    distanceKm || null,
+    calcDuration,
+    notes || null,
+  );
 
   const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(trip);
