@@ -762,25 +762,68 @@ body::after {
    ============================================================ */
 .sprit-view { display: flex; flex-direction: column; gap: var(--sp-md); }
 
-.page-header {
+/* Header */
+.sprit-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-md);
 }
-.page-title { font-size: 26px; font-weight: 700; margin: 0 0 2px; }
+.page-title  { font-size: 26px; font-weight: 700; margin: 0 0 2px; }
 .page-subtitle { font-size: 13px; color: var(--text-secondary); margin: 0; }
 
-.year-nav {
+/* Month/period navigation */
+.period-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--r-full);
-  padding: 4px 6px;
+  padding: 6px 10px;
 }
-.year-label { font-size: 15px; font-weight: 600; min-width: 40px; text-align: center; }
+.period-nav-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.period-month { font-size: 16px; font-weight: 700; }
+.period-year  { font-size: 11px; color: var(--text-secondary); }
+
+/* Monthly summary bar */
+.month-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: var(--r-md);
+}
+.month-summary-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.month-summary-value { font-size: 16px; font-weight: 700; }
+.month-summary-label { font-size: 11px; color: var(--text-secondary); }
+.month-summary-divider { width: 1px; height: 32px; background: var(--glass-border); }
+
+/* Yearly stats (details/summary) */
+.yearly-stats {
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: var(--r-md);
+}
+.yearly-stats-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.yearly-stats-title::before { content: '▸'; font-size: 10px; }
+details[open] .yearly-stats-title::before { content: '▾'; }
+.stat-card-mini { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.stat-value-sm  { font-size: 13px; font-weight: 700; }
+.stat-label-sm  { font-size: 10px; color: var(--text-secondary); }
 
 /* Form */
 .fuel-form {
@@ -792,6 +835,28 @@ body::after {
   font-weight: 600;
   margin: 0 0 var(--sp-md);
 }
+/* Bidirectional calc layout: Liter × Preis/L = Gesamt */
+.fuel-calc-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: var(--sp-sm);
+}
+.fuel-calc-op {
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--text-secondary);
+  padding-bottom: 10px;
+  text-align: center;
+}
+@media (max-width: 480px) {
+  .fuel-calc-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .fuel-calc-op { display: none; }
+}
 .computed-input {
   background: rgba(0, 122, 255, 0.10) !important;
   border-color: rgba(0, 122, 255, 0.35) !important;
@@ -800,8 +865,6 @@ body::after {
   font-size: 10px;
   font-weight: 500;
   color: var(--accent);
-  opacity: 0.8;
-  margin-left: 4px;
 }
 .fuel-total-input { font-size: 18px; font-weight: 600; }
 .form-actions {
@@ -822,14 +885,14 @@ body::after {
   border-radius: var(--r-md);
   gap: var(--sp-sm);
 }
-.fuel-item-left { display: flex; align-items: center; gap: var(--sp-sm); flex: 1; min-width: 0; }
-.fuel-item-icon { font-size: 24px; flex-shrink: 0; }
-.fuel-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.fuel-item-date { font-size: 14px; font-weight: 600; }
-.fuel-item-meta { font-size: 12px; color: var(--text-secondary); }
+.fuel-item-left  { display: flex; align-items: center; gap: var(--sp-sm); flex: 1; min-width: 0; }
+.fuel-item-icon  { font-size: 24px; flex-shrink: 0; }
+.fuel-item-info  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fuel-item-date  { font-size: 14px; font-weight: 600; }
+.fuel-item-meta  { font-size: 12px; color: var(--text-secondary); }
 .fuel-item-notes { font-size: 11px; color: var(--text-secondary); opacity: 0.7; }
+.fuel-item-odo-inline { font-size: 11px; color: var(--text-secondary); }
 
 .fuel-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
-.fuel-item-cost { font-size: 16px; font-weight: 700; }
-.fuel-item-odo { font-size: 11px; color: var(--text-secondary); }
+.fuel-item-cost  { font-size: 16px; font-weight: 700; }
 .fuel-item-actions { display: flex; gap: 4px; margin-top: 4px; }

@@ -5,8 +5,8 @@ interface FuelState {
   entries: FuelEntry[];
   stats: FuelStats | null;
 
-  loadEntries: (year?: number) => Promise<void>;
-  loadStats: () => Promise<void>;
+  loadEntries: (year: number, month: number) => Promise<void>;
+  loadStats: (year: number) => Promise<void>;
   addEntry: (data: Omit<FuelEntry, 'id' | 'created_at'>) => Promise<void>;
   updateEntry: (id: number, data: Omit<FuelEntry, 'id' | 'created_at'>) => Promise<void>;
   deleteEntry: (id: number) => Promise<void>;
@@ -16,15 +16,14 @@ export const useFuelStore = create<FuelState>((set) => ({
   entries: [],
   stats: null,
 
-  loadEntries: async (year) => {
-    const url = year ? `/api/fuel?year=${year}` : '/api/fuel';
-    const res = await fetch(url);
+  loadEntries: async (year, month) => {
+    const res = await fetch(`/api/fuel?year=${year}&month=${month}`);
     const data = await res.json();
     set({ entries: data.entries });
   },
 
-  loadStats: async () => {
-    const res = await fetch('/api/fuel/stats');
+  loadStats: async (year) => {
+    const res = await fetch(`/api/fuel/stats?year=${year}`);
     const data = await res.json();
     set({ stats: data });
   },

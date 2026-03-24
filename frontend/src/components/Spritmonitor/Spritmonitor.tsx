@@ -4,14 +4,27 @@ import type { FuelEntry } from '../../types';
 
 type ComputedField = 'liters' | 'pricePerLiter' | 'totalCost';
 
-function toLocalDateString(ts: number) {
-  const d = new Date(ts);
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const MONTH_NAMES = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+];
+
+/** Parse YYYY-MM-DD as local date (avoids UTC-offset day-shift bug) */
+function parseDateLocal(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0).getTime();
 }
 
 function toInputDate(ts: number) {
   const d = new Date(ts);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function fmtDate(ts: number) {
+  return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 const emptyForm = () => ({
@@ -26,17 +39,30 @@ const emptyForm = () => ({
 
 export function Spritmonitor() {
   const { entries, stats, loadEntries, loadStats, addEntry, updateEntry, deleteEntry } = useFuelStore();
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState(emptyForm());
-  const [saving, setSaving] = useState(false);
+
+  const now = new Date();
+  const [year, setYear]   = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
+
+  const [showForm, setShowForm]         = useState(false);
+  const [editId, setEditId]             = useState<number | null>(null);
+  const [form, setForm]                 = useState(emptyForm());
+  const [saving, setSaving]             = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   useEffect(() => {
-    loadEntries(year);
-    loadStats();
-  }, [year]);
+    loadEntries(year, month);
+    loadStats(year);
+  }, [year, month]);
+
+  function prevMonth() {
+    if (month === 1) { setYear(y => y - 1); setMonth(12); }
+    else setMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (month === 12) { setYear(y => y + 1); setMonth(1); }
+    else setMonth(m => m + 1);
+  }
 
   // Bidirectional calculation
   function handleFieldChange(field: 'liters' | 'pricePerLiter' | 'totalCost', value: string) {
@@ -45,7 +71,6 @@ export function Spritmonitor() {
     const p = parseFloat(updated.pricePerLiter);
     const t = parseFloat(updated.totalCost);
 
-    // Compute the "other" field based on which two are filled
     if (field !== 'totalCost' && !isNaN(l) && !isNaN(p)) {
       updated.totalCost = (l * p).toFixed(2);
       updated.computed = 'totalCost';
@@ -89,7 +114,7 @@ export function Spritmonitor() {
 
     setSaving(true);
     const payload = {
-      date: new Date(form.date).getTime(),
+      date: parseDateLocal(form.date),
       liters: l,
       price_per_liter: p,
       total_cost: t,
@@ -101,9 +126,13 @@ export function Spritmonitor() {
       await updateEntry(editId, payload);
     } else {
       await addEntry(payload);
+      // Navigate to the month of the newly saved entry
+      const saved = new Date(payload.date);
+      setYear(saved.getFullYear());
+      setMonth(saved.getMonth() + 1);
     }
-    await loadEntries(year);
-    await loadStats();
+    await loadEntries(year, month);
+    await loadStats(year);
     setSaving(false);
     setShowForm(false);
     setEditId(null);
@@ -111,81 +140,110 @@ export function Spritmonitor() {
 
   async function handleDelete(id: number) {
     await deleteEntry(id);
-    await loadEntries(year);
-    await loadStats();
+    await loadEntries(year, month);
+    await loadStats(year);
     setDeleteConfirm(null);
   }
 
   const fmtEur = (v: number) =>
     v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-  const fmtL = (v: number) =>
-    v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
+
+  const monthTotal = entries.reduce((s, e) => s + e.total_cost, 0);
+  const monthLiters = entries.reduce((s, e) => s + e.liters, 0);
 
   return (
     <div className="sprit-view">
       {/* Header */}
-      <div className="page-header">
+      <div className="sprit-header">
         <div>
           <h1 className="page-title">⛽ Spritmonitor</h1>
           <p className="page-subtitle">Tankverlauf & Kosten</p>
         </div>
-        <div className="year-nav">
-          <button className="btn btn-ghost btn-icon" onClick={() => setYear(y => y - 1)}>‹</button>
-          <span className="year-label">{year}</span>
-          <button className="btn btn-ghost btn-icon" onClick={() => setYear(y => y + 1)}>›</button>
-        </div>
+        <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Tanken</button>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="stats-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <div className="glass-sm stat-card">
-            <div className="stat-value text-accent">{stats.fillCount}</div>
-            <div className="stat-label">Tankstopps</div>
-          </div>
-          <div className="glass-sm stat-card">
-            <div className="stat-value">{fmtEur(stats.totalCost)}</div>
-            <div className="stat-label">Gesamtkosten</div>
-          </div>
-          <div className="glass-sm stat-card">
-            <div className="stat-value">{fmtL(stats.totalLiters)}</div>
-            <div className="stat-label">Gesamt Liter</div>
-          </div>
+      {/* Month navigation */}
+      <div className="period-nav">
+        <button className="btn btn-ghost btn-icon" onClick={prevMonth}>‹</button>
+        <div className="period-nav-label">
+          <span className="period-month">{MONTH_NAMES[month - 1]}</span>
+          <span className="period-year">{year}</span>
         </div>
-      )}
-      {stats && (
-        <div className="stats-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <div className="glass-sm stat-card">
-            <div className="stat-value">
-              {stats.avgPrice > 0
-                ? stats.avgPrice.toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' €'
-                : '–'}
-            </div>
-            <div className="stat-label">Ø Preis/L</div>
+        <button className="btn btn-ghost btn-icon" onClick={nextMonth}>›</button>
+      </div>
+
+      {/* Monthly summary bar */}
+      {entries.length > 0 && (
+        <div className="glass-sm month-summary">
+          <div className="month-summary-item">
+            <span className="month-summary-value">{entries.length}</span>
+            <span className="month-summary-label">Stops</span>
           </div>
-          <div className="glass-sm stat-card">
-            <div className="stat-value">
-              {stats.avgConsumption != null
-                ? stats.avgConsumption.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L'
-                : '–'}
-            </div>
-            <div className="stat-label">Ø l/100km</div>
+          <div className="month-summary-divider" />
+          <div className="month-summary-item">
+            <span className="month-summary-value">
+              {monthLiters.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} L
+            </span>
+            <span className="month-summary-label">Getankt</span>
           </div>
-          <div className="glass-sm stat-card">
-            <div className="stat-value">
-              {stats.costPerKm != null
-                ? stats.costPerKm.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
-                : '–'}
-            </div>
-            <div className="stat-label">Kosten/km</div>
+          <div className="month-summary-divider" />
+          <div className="month-summary-item">
+            <span className="month-summary-value text-accent">{fmtEur(monthTotal)}</span>
+            <span className="month-summary-label">Kosten</span>
           </div>
         </div>
       )}
 
-      {/* Add button */}
-      <button className="btn btn-primary btn-full" onClick={openAdd} style={{ marginBottom: 'var(--sp-md)' }}>
-        + Tanken erfassen
-      </button>
+      {/* Yearly stats (collapsible section) */}
+      {stats && stats.fillCount > 0 && (
+        <details className="glass yearly-stats">
+          <summary className="yearly-stats-title">
+            Jahresübersicht {year}
+          </summary>
+          <div className="stats-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginTop: 'var(--sp-sm)' }}>
+            <div className="stat-card-mini">
+              <div className="stat-value-sm text-accent">{stats.fillCount}</div>
+              <div className="stat-label-sm">Tankstopps</div>
+            </div>
+            <div className="stat-card-mini">
+              <div className="stat-value-sm">{fmtEur(stats.totalCost)}</div>
+              <div className="stat-label-sm">Gesamtkosten</div>
+            </div>
+            <div className="stat-card-mini">
+              <div className="stat-value-sm">
+                {stats.totalLiters.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} L
+              </div>
+              <div className="stat-label-sm">Gesamt Liter</div>
+            </div>
+          </div>
+          <div className="stats-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginTop: 'var(--sp-sm)' }}>
+            <div className="stat-card-mini">
+              <div className="stat-value-sm">
+                {stats.avgPrice > 0
+                  ? stats.avgPrice.toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' €'
+                  : '–'}
+              </div>
+              <div className="stat-label-sm">Ø Preis/L</div>
+            </div>
+            <div className="stat-card-mini">
+              <div className="stat-value-sm">
+                {stats.avgConsumption != null
+                  ? stats.avgConsumption.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L'
+                  : '–'}
+              </div>
+              <div className="stat-label-sm">Ø l/100km</div>
+            </div>
+            <div className="stat-card-mini">
+              <div className="stat-value-sm">
+                {stats.costPerKm != null
+                  ? stats.costPerKm.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+                  : '–'}
+              </div>
+              <div className="stat-label-sm">Kosten/km</div>
+            </div>
+          </div>
+        </details>
+      )}
 
       {/* Inline Form */}
       {showForm && (
@@ -203,74 +261,80 @@ export function Spritmonitor() {
               />
             </div>
 
-            {/* Bidirectional fields */}
-            <div className="form-row">
-              <div className="form-group" style={{ flex: 1 }}>
+            {/* Bidirectional calculation row */}
+            <div className="fuel-calc-grid">
+              <div className="form-group">
                 <label className="form-label">
-                  Liter {form.computed === 'liters' && <span className="computed-badge">⟵ berechnet</span>}
+                  Liter{form.computed === 'liters' && <span className="computed-badge"> ⟵ berechnet</span>}
                 </label>
                 <input
                   type="number"
-                  className={`form-input ${form.computed === 'liters' ? 'computed-input' : ''}`}
-                  placeholder="z.B. 42.50"
+                  className={`form-input${form.computed === 'liters' ? ' computed-input' : ''}`}
+                  placeholder="42.50"
                   step="0.01"
+                  min="0"
                   value={form.liters}
                   onChange={e => handleFieldChange('liters', e.target.value)}
                   required
                 />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="fuel-calc-op">×</div>
+              <div className="form-group">
                 <label className="form-label">
-                  Preis/L €  {form.computed === 'pricePerLiter' && <span className="computed-badge">⟵ berechnet</span>}
+                  Preis/L €{form.computed === 'pricePerLiter' && <span className="computed-badge"> ⟵</span>}
                 </label>
                 <input
                   type="number"
-                  className={`form-input ${form.computed === 'pricePerLiter' ? 'computed-input' : ''}`}
-                  placeholder="z.B. 1.789"
+                  className={`form-input${form.computed === 'pricePerLiter' ? ' computed-input' : ''}`}
+                  placeholder="1.789"
                   step="0.001"
+                  min="0"
                   value={form.pricePerLiter}
                   onChange={e => handleFieldChange('pricePerLiter', e.target.value)}
                   required
                 />
               </div>
+              <div className="fuel-calc-op">=</div>
+              <div className="form-group">
+                <label className="form-label">
+                  Gesamt €{form.computed === 'totalCost' && <span className="computed-badge"> ⟵</span>}
+                </label>
+                <input
+                  type="number"
+                  className={`form-input fuel-total-input${form.computed === 'totalCost' ? ' computed-input' : ''}`}
+                  placeholder="76.00"
+                  step="0.01"
+                  min="0"
+                  value={form.totalCost}
+                  onChange={e => handleFieldChange('totalCost', e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                Gesamt €  {form.computed === 'totalCost' && <span className="computed-badge">⟵ berechnet</span>}
-              </label>
-              <input
-                type="number"
-                className={`form-input fuel-total-input ${form.computed === 'totalCost' ? 'computed-input' : ''}`}
-                placeholder="z.B. 76.00"
-                step="0.01"
-                value={form.totalCost}
-                onChange={e => handleFieldChange('totalCost', e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Kilometerstand (optional)</label>
-              <input
-                type="number"
-                className="form-input"
-                placeholder="z.B. 85420"
-                step="1"
-                value={form.odometer}
-                onChange={e => setForm(f => ({ ...f, odometer: e.target.value }))}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Notiz (optional)</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="z.B. Tankstelle A1"
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              />
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Kilometerstand (optional)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="85420"
+                  step="1"
+                  min="0"
+                  value={form.odometer}
+                  onChange={e => setForm(f => ({ ...f, odometer: e.target.value }))}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Notiz (optional)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="z.B. Tankstelle A1"
+                  value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                />
+              </div>
             </div>
 
             <div className="form-actions">
@@ -291,11 +355,10 @@ export function Spritmonitor() {
           <div className="empty-state">
             <div style={{ fontSize: 48 }}>⛽</div>
             <h3>Keine Einträge</h3>
-            <p>Erfasse deinen ersten Tankstopp</p>
+            <p>{MONTH_NAMES[month - 1]} {year} – noch nichts erfasst</p>
           </div>
         )}
         {entries.map((entry, idx) => {
-          // Compute consumption vs previous entry (entries are desc, so next index = previous date)
           const prev = entries[idx + 1];
           let consumption: number | null = null;
           if (prev && prev.odometer_km != null && entry.odometer_km != null) {
@@ -308,25 +371,27 @@ export function Spritmonitor() {
               <div className="fuel-item-left">
                 <div className="fuel-item-icon">⛽</div>
                 <div className="fuel-item-info">
-                  <div className="fuel-item-date">{toLocalDateString(entry.date)}</div>
+                  <div className="fuel-item-date">{fmtDate(entry.date)}</div>
                   <div className="fuel-item-meta">
                     {entry.liters.toLocaleString('de-DE', { minimumFractionDigits: 2 })} L
                     {' · '}
                     {entry.price_per_liter.toLocaleString('de-DE', { minimumFractionDigits: 3 })} €/L
                     {consumption != null && (
-                      <> · <span style={{ color: 'var(--text-accent)' }}>
+                      <> · <span className="text-accent">
                         {consumption.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} l/100km
                       </span></>
                     )}
                   </div>
                   {entry.notes && <div className="fuel-item-notes">{entry.notes}</div>}
+                  {entry.odometer_km != null && (
+                    <div className="fuel-item-odo-inline">
+                      {entry.odometer_km.toLocaleString('de-DE')} km
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="fuel-item-right">
                 <div className="fuel-item-cost">{fmtEur(entry.total_cost)}</div>
-                {entry.odometer_km != null && (
-                  <div className="fuel-item-odo">{entry.odometer_km.toLocaleString('de-DE')} km</div>
-                )}
                 <div className="fuel-item-actions">
                   <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(entry)}>✏️</button>
                   {deleteConfirm === entry.id ? (
