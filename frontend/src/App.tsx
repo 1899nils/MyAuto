@@ -12,10 +12,9 @@ type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel';
 
 const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
   { view: 'dashboard', icon: '🏠', label: 'Dashboard' },
-  { view: 'active', icon: '🚗', label: 'Fahrt' },
-  { view: 'history', icon: '📋', label: 'Fahrten' },
-  { view: 'fuel', icon: '⛽', label: 'Sprit' },
-  { view: 'settings', icon: '⚙️', label: 'Einstellungen' },
+  { view: 'history',   icon: '🚗', label: 'Fahrten'   },
+  { view: 'fuel',      icon: '⛽', label: 'Sprit'      },
+  { view: 'settings',  icon: '⚙️', label: 'Einstellungen' },
 ];
 
 export default function App() {
@@ -49,12 +48,12 @@ export default function App() {
         {NAV_ITEMS.map(item => (
           <div
             key={item.view}
-            className={`nav-item ${view === item.view || (item.view === 'active' && view === 'active') ? 'active' : ''}`}
+            className={`nav-item ${view === item.view || (item.view === 'history' && view === 'active') ? 'active' : ''}`}
             onClick={() => setView(item.view)}
           >
             <span className="nav-icon">{item.icon}</span>
             <span>{item.label}</span>
-            {item.view === 'active' && isTracking && (
+            {item.view === 'history' && isTracking && (
               <span style={{
                 marginLeft: 'auto',
                 width: 8, height: 8,
@@ -83,7 +82,7 @@ export default function App() {
           >
             <div className="tab-icon" style={{ position: 'relative' }}>
               {item.icon}
-              {item.view === 'active' && isTracking && (
+              {item.view === 'history' && isTracking && (
                 <span style={{
                   position: 'absolute', top: -2, right: -4,
                   width: 8, height: 8,

@@ -154,12 +154,14 @@ export function Spritmonitor() {
   return (
     <div className="sprit-view">
       {/* Header */}
-      <div className="sprit-header">
+      <div className="page-header">
         <div>
           <h1 className="page-title">⛽ Spritmonitor</h1>
           <p className="page-subtitle">Tankverlauf & Kosten</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Tanken</button>
+        <div className="page-actions">
+          <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Tanken</button>
+        </div>
       </div>
 
       {/* Month navigation */}
@@ -247,8 +249,8 @@ export function Spritmonitor() {
 
       {/* Inline Form */}
       {showForm && (
-        <div className="glass fuel-form">
-          <h3 className="fuel-form-title">{editId != null ? 'Eintrag bearbeiten' : 'Neuer Tankstopp'}</h3>
+        <div className="glass inline-form">
+          <h3 className="inline-form-title">{editId != null ? 'Eintrag bearbeiten' : 'Neuer Tankstopp'}</h3>
           <form onSubmit={handleSave}>
             <div className="form-group">
               <label className="form-label">Datum</label>
@@ -350,29 +352,30 @@ export function Spritmonitor() {
       )}
 
       {/* Entry list */}
-      <div className="fuel-list">
-        {entries.length === 0 && !showForm && (
+      {entries.length === 0 && !showForm ? (
+        <div className="glass">
           <div className="empty-state">
-            <div style={{ fontSize: 48 }}>⛽</div>
+            <div className="empty-icon">⛽</div>
             <h3>Keine Einträge</h3>
             <p>{MONTH_NAMES[month - 1]} {year} – noch nichts erfasst</p>
           </div>
-        )}
-        {entries.map((entry, idx) => {
-          const prev = entries[idx + 1];
-          let consumption: number | null = null;
-          if (prev && prev.odometer_km != null && entry.odometer_km != null) {
-            const km = entry.odometer_km - prev.odometer_km;
-            if (km > 0) consumption = (entry.liters / km) * 100;
-          }
+        </div>
+      ) : (
+        <div className="glass list-card">
+          {entries.map((entry, idx) => {
+            const prev = entries[idx + 1];
+            let consumption: number | null = null;
+            if (prev && prev.odometer_km != null && entry.odometer_km != null) {
+              const km = entry.odometer_km - prev.odometer_km;
+              if (km > 0) consumption = (entry.liters / km) * 100;
+            }
 
-          return (
-            <div key={entry.id} className="glass-sm fuel-item">
-              <div className="fuel-item-left">
-                <div className="fuel-item-icon">⛽</div>
-                <div className="fuel-item-info">
-                  <div className="fuel-item-date">{fmtDate(entry.date)}</div>
-                  <div className="fuel-item-meta">
+            return (
+              <div key={entry.id} className="list-item">
+                <div className="list-item-icon-box fuel">⛽</div>
+                <div className="list-item-body">
+                  <div className="list-item-title">{fmtDate(entry.date)}</div>
+                  <div className="list-item-sub">
                     {entry.liters.toLocaleString('de-DE', { minimumFractionDigits: 2 })} L
                     {' · '}
                     {entry.price_per_liter.toLocaleString('de-DE', { minimumFractionDigits: 3 })} €/L
@@ -382,32 +385,33 @@ export function Spritmonitor() {
                       </span></>
                     )}
                   </div>
-                  {entry.notes && <div className="fuel-item-notes">{entry.notes}</div>}
-                  {entry.odometer_km != null && (
-                    <div className="fuel-item-odo-inline">
-                      {entry.odometer_km.toLocaleString('de-DE')} km
+                  {(entry.notes || entry.odometer_km != null) && (
+                    <div className="list-item-tag">
+                      {entry.odometer_km != null && `${entry.odometer_km.toLocaleString('de-DE')} km`}
+                      {entry.odometer_km != null && entry.notes && ' · '}
+                      {entry.notes}
                     </div>
                   )}
                 </div>
-              </div>
-              <div className="fuel-item-right">
-                <div className="fuel-item-cost">{fmtEur(entry.total_cost)}</div>
-                <div className="fuel-item-actions">
-                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(entry)}>✏️</button>
-                  {deleteConfirm === entry.id ? (
-                    <>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(entry.id)}>Löschen</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm(null)}>✕</button>
-                    </>
-                  ) : (
-                    <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setDeleteConfirm(entry.id)}>🗑️</button>
-                  )}
+                <div className="list-item-end">
+                  <div className="list-item-value">{fmtEur(entry.total_cost)}</div>
+                  <div className="list-item-actions">
+                    <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(entry)}>✏️</button>
+                    {deleteConfirm === entry.id ? (
+                      <>
+                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(entry.id)}>Löschen</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm(null)}>✕</button>
+                      </>
+                    ) : (
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setDeleteConfirm(entry.id)}>🗑️</button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

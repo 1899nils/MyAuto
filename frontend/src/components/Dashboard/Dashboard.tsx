@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { useBluetooth } from '../../hooks/useBluetooth';
-import { formatDate, formatTime, formatKm, formatDuration, liveElapsed, categoryLabel } from '../../utils/format';
+import { formatDate, formatTime, formatKm, formatDuration, liveElapsed, categoryLabel, categoryEmoji } from '../../utils/format';
 import { Trip } from '../../types';
 
 export function Dashboard() {
@@ -38,11 +38,11 @@ export function Dashboard() {
       const secs = Math.round((Date.now() - activeTrip.start_time) / 1000);
       const km = calcDistance(trackPoints.map(p => ({ lat: p.lat, lng: p.lng })));
       await endTrip(activeTrip.id, {
-        endTime: Date.now(),
-        endLat: pos?.coords.latitude,
-        endLng: pos?.coords.longitude,
+        endTime:         Date.now(),
+        endLat:          pos?.coords.latitude,
+        endLng:          pos?.coords.longitude,
         durationSeconds: secs,
-        distanceKm: km,
+        distanceKm:      km,
       });
       await loadStats();
     } finally {
@@ -52,56 +52,58 @@ export function Dashboard() {
 
   async function handlePairBluetooth() {
     setBtError('');
-    try {
-      await pairDevice();
-    } catch (e: unknown) {
-      setBtError(e instanceof Error ? e.message : 'Fehler beim Koppeln');
-    }
+    try { await pairDevice(); }
+    catch (e: unknown) { setBtError(e instanceof Error ? e.message : 'Fehler beim Koppeln'); }
   }
 
-  const monthBusiness = stats?.byCategory.find(c => c.category === 'business');
-  const monthPrivate = stats?.byCategory.find(c => c.category === 'private');
-  const totalMonthKm = (monthBusiness?.km ?? 0) + (monthPrivate?.km ?? 0);
-  const businessPct = totalMonthKm > 0 ? Math.round(((monthBusiness?.km ?? 0) / totalMonthKm) * 100) : 0;
+  const monthBusiness  = stats?.byCategory.find(c => c.category === 'business');
+  const monthPrivate   = stats?.byCategory.find(c => c.category === 'private');
+  const totalMonthKm   = (monthBusiness?.km ?? 0) + (monthPrivate?.km ?? 0);
+  const businessPct    = totalMonthKm > 0 ? Math.round(((monthBusiness?.km ?? 0) / totalMonthKm) * 100) : 0;
 
   return (
     <div>
+      {/* Header */}
       <div className="page-header">
-        <h1>Dashboard</h1>
-        <p>{formatDate(Date.now())}</p>
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">{formatDate(Date.now())}</p>
+        </div>
       </div>
 
-      {/* Active Trip Banner */}
-      {isTracking && activeTrip && (
-        <div className="active-banner glass mb-md" onClick={() => setView('active')}>
-          <div className="active-dot" />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>Fahrt läuft – {elapsed}</div>
-            <div className="text-secondary" style={{ fontSize: 13 }}>
+      {/* Active trip banner */}
+      {isTracking && activeTrip ? (
+        <div className="live-trip-card" style={{ marginBottom: 'var(--sp-md)' }}>
+          <div className="live-dot" />
+          <div className="live-trip-info" onClick={() => setView('active')} style={{ flex: 1, cursor: 'pointer' }}>
+            <div className="live-trip-title">Fahrt läuft · {elapsed}</div>
+            <div className="live-trip-sub">
               {calcDistance(trackPoints.map(p => ({ lat: p.lat, lng: p.lng }))).toFixed(1)} km
             </div>
           </div>
-          <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleEndTrip(); }} disabled={ending}>
-            {ending ? 'Beende…' : '⏹ Beenden'}
+          <button className="btn btn-ghost btn-sm" onClick={() => setView('active')}>Karte</button>
+          <button className="btn btn-danger btn-sm" onClick={handleEndTrip} disabled={ending}>
+            {ending ? '…' : '⏹ Ende'}
           </button>
         </div>
-      )}
+      ) : (
+        /* Start trip */
+        <div className="glass card" style={{ marginBottom: 'var(--sp-md)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)' }}>
+            <div style={{ fontSize: 36 }}>🚗</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 16 }}>Neue Fahrt starten</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Manuell oder automatisch via Bluetooth</div>
+            </div>
+            <button className="btn btn-success btn-sm" onClick={handleStartTrip} disabled={starting}>
+              {starting ? '⏳' : '▶ Start'}
+            </button>
+          </div>
 
-      {/* Start Trip (only if not tracking) */}
-      {!isTracking && (
-        <div className="glass card mb-md" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🚗</div>
-          <h2 style={{ marginBottom: 8, fontSize: 20 }}>Neue Fahrt starten</h2>
-          <p className="text-secondary mb-md" style={{ fontSize: 14 }}>
-            Manuell oder automatisch via Bluetooth wenn du dein Auto startest
-          </p>
-          <button className="btn btn-success btn-lg btn-full" onClick={handleStartTrip} disabled={starting}>
-            {starting ? '⏳ Starte…' : '▶ Fahrt starten'}
-          </button>
           {btStatus !== 'unsupported' && (
-            <div className="mt-md">
+            <div style={{ marginTop: 'var(--sp-sm)', paddingTop: 'var(--sp-sm)', borderTop: '1px solid var(--glass-border)' }}>
               {btStatus === 'no-device' && (
-                <button className="btn btn-ghost btn-sm" onClick={handlePairBluetooth}>
+                <button className="btn btn-ghost btn-sm" onClick={handlePairBluetooth} style={{ width: '100%' }}>
                   🔵 Auto koppeln für Auto-Tracking
                 </button>
               )}
@@ -117,7 +119,7 @@ export function Dashboard() {
                   Verbunden mit {settings?.bluetoothDeviceName || 'Auto'} – Fahrt startet automatisch
                 </div>
               )}
-              {btError && <p className="text-red mt-sm" style={{ fontSize: 13 }}>{btError}</p>}
+              {btError && <p className="text-red" style={{ fontSize: 13, marginTop: 6 }}>{btError}</p>}
             </div>
           )}
         </div>
@@ -143,43 +145,32 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Business vs Private Split */}
+      {/* Business / private split */}
       {totalMonthKm > 0 && (
-        <div className="glass card mb-md">
-          <div className="card-title">Diesen Monat</div>
-          <div className="flex-between mb-sm">
-            <span style={{ fontSize: 14 }}>💼 Beruflich</span>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>
-              {formatKm(monthBusiness?.km ?? 0)} ({businessPct}%)
-            </span>
+        <div className="glass card" style={{ marginBottom: 'var(--sp-md)' }}>
+          <div className="card-title">Aufteilung Monat</div>
+          <div className="flex-between" style={{ fontSize: 14, marginBottom: 6 }}>
+            <span>💼 Beruflich</span>
+            <span style={{ fontWeight: 600 }}>{formatKm(monthBusiness?.km ?? 0)} ({businessPct}%)</span>
           </div>
-          <div style={{
-            height: 8, borderRadius: 4,
-            background: 'var(--glass-bg)',
-            overflow: 'hidden',
-            marginBottom: 10
-          }}>
+          <div style={{ height: 8, borderRadius: 4, background: 'var(--glass-bg)', overflow: 'hidden', marginBottom: 8 }}>
             <div style={{
-              height: '100%',
-              width: `${businessPct}%`,
+              height: '100%', width: `${businessPct}%`,
               background: 'linear-gradient(90deg, var(--accent), var(--accent-light))',
-              borderRadius: 4,
-              transition: 'width 0.6s var(--ease)'
+              borderRadius: 4, transition: 'width 0.6s var(--ease)',
             }} />
           </div>
-          <div className="flex-between">
-            <span style={{ fontSize: 14 }}>🏠 Privat</span>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>
-              {formatKm(monthPrivate?.km ?? 0)} ({100 - businessPct}%)
-            </span>
+          <div className="flex-between" style={{ fontSize: 14 }}>
+            <span>🏠 Privat</span>
+            <span style={{ fontWeight: 600 }}>{formatKm(monthPrivate?.km ?? 0)} ({100 - businessPct}%)</span>
           </div>
         </div>
       )}
 
-      {/* Recent Trips */}
-      <div className="glass card" style={{ padding: 0 }}>
-        <div style={{ padding: 'var(--sp-md) var(--sp-lg)' }} className="flex-between">
-          <span className="card-title" style={{ marginBottom: 0 }}>Letzte Fahrten</span>
+      {/* Recent trips */}
+      <div className="glass list-card" style={{ marginBottom: 0 }}>
+        <div className="list-card-header">
+          <span className="card-title" style={{ margin: 0 }}>Letzte Fahrten</span>
           <button className="btn btn-ghost btn-sm" onClick={() => setView('history')}>Alle →</button>
         </div>
         {trips.length === 0 ? (
@@ -190,36 +181,27 @@ export function Dashboard() {
           </div>
         ) : (
           trips.slice(0, 5).map(trip => (
-            <TripListItem key={trip.id} trip={trip} onClick={() => setView('detail', trip.id)} />
+            <div key={trip.id} className="list-item" onClick={() => setView('detail', trip.id)}>
+              <div className={`list-item-icon-box ${trip.category}`}>
+                {categoryEmoji(trip.category)}
+              </div>
+              <div className="list-item-body">
+                <div className="list-item-title">
+                  {trip.start_address
+                    ? `${trip.start_address.split(',')[0]} → ${trip.end_address?.split(',')[0] ?? '…'}`
+                    : formatDate(trip.start_time)}
+                </div>
+                <div className="list-item-sub">
+                  {formatTime(trip.start_time)} · {categoryLabel(trip.category)}
+                </div>
+              </div>
+              <div className="list-item-end">
+                {trip.distance_km != null && <div className="list-item-value">{formatKm(trip.distance_km)}</div>}
+                {trip.duration_seconds != null && <div className="list-item-label">{formatDuration(trip.duration_seconds)}</div>}
+              </div>
+            </div>
           ))
         )}
-      </div>
-    </div>
-  );
-}
-
-function TripListItem({ trip, onClick }: { trip: Trip; onClick: () => void }) {
-  return (
-    <div className="trip-item" onClick={onClick}>
-      <div className={`trip-item-icon ${trip.category}`}>
-        {trip.category === 'business' ? '💼' : trip.category === 'private' ? '🏠' : '❓'}
-      </div>
-      <div className="trip-item-info">
-        <div className="trip-item-route">
-          {trip.start_address
-            ? `${trip.start_address.split(',')[0]} → ${trip.end_address?.split(',')[0] ?? '…'}`
-            : formatDate(trip.start_time)}
-        </div>
-        <div className="trip-item-meta">
-          {formatTime(trip.start_time)} &bull; {categoryLabel(trip.category)}
-          {trip.traffic_delay_seconds && trip.traffic_delay_seconds > 60
-            ? ` &bull; 🚦 +${formatDuration(trip.traffic_delay_seconds)} Stau`
-            : ''}
-        </div>
-      </div>
-      <div className="trip-item-stats">
-        {trip.distance_km && <div className="trip-item-km">{trip.distance_km.toFixed(1)} km</div>}
-        {trip.duration_seconds && <div className="trip-item-time">{formatDuration(trip.duration_seconds)}</div>}
       </div>
     </div>
   );
