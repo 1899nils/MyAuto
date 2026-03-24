@@ -1,99 +1,212 @@
 import { useEffect, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { TripCategory, Trip } from '../../types';
-import { formatDate, formatTime, formatKm, formatDuration, categoryLabel } from '../../utils/format';
+import {
+  formatDate, formatTime, formatKm, formatDuration,
+  categoryLabel, categoryEmoji, liveElapsed,
+} from '../../utils/format';
 import { api } from '../../api/client';
-import { AddTripModal } from '../ui/AddTripModal';
+
+// ---- helpers for inline add-form ----
+function toDatetimeLocal(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromDatetimeLocal(v: string): number { return new Date(v).getTime(); }
 
 const CATEGORIES: { value: TripCategory | 'all'; label: string }[] = [
-  { value: 'all', label: 'Alle' },
-  { value: 'business', label: '💼 Beruflich' },
-  { value: 'private', label: '🏠 Privat' },
-  { value: 'unclassified', label: '❓ Offen' },
+  { value: 'all',           label: 'Alle'         },
+  { value: 'business',      label: '💼 Beruflich'  },
+  { value: 'private',       label: '🏠 Privat'     },
+  { value: 'unclassified',  label: '❓ Offen'       },
 ];
 
+const MONTH_NAMES = [
+  'Januar','Februar','März','April','Mai','Juni',
+  'Juli','August','September','Oktober','November','Dezember',
+];
+
+const emptyTripForm = () => ({
+  startVal: toDatetimeLocal(Date.now() - 3_600_000),
+  endVal:   toDatetimeLocal(Date.now()),
+  startAddress: '',
+  endAddress:   '',
+  distanceKm:   '',
+  category:     'unclassified' as TripCategory,
+  notes:        '',
+});
+
 export function TripHistory() {
-  const { trips, totalTrips, loadTrips, deleteTrip, setView } = useTripStore();
-  const [filter, setFilter] = useState<TripCategory | 'all'>('all');
-  const [monthOffset, setMonthOffset] = useState(0);
-  const [page, setPage] = useState(0);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const PAGE_SIZE = 20;
+  const {
+    trips, totalTrips, loadTrips, deleteTrip, setView,
+    isTracking, activeTrip, trackPoints, endTrip, loadStats,
+    addManualTrip,
+  } = useTripStore();
 
   const now = new Date();
-  const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
+  const [year,  setYear]  = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [filter, setFilter] = useState<TripCategory | 'all'>('all');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
+
+  // live elapsed for active trip
+  const [elapsed, setElapsed] = useState('');
+  useEffect(() => {
+    if (!activeTrip) { setElapsed(''); return; }
+    const id = setInterval(() => setElapsed(liveElapsed(activeTrip.start_time)), 1000);
+    return () => clearInterval(id);
+  }, [activeTrip]);
+
+  // inline add-form
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyTripForm());
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [ending, setEnding] = useState(false);
+
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  const startTs = fromDatetimeLocal(form.startVal);
+  const endTs   = fromDatetimeLocal(form.endVal);
+  const valid   = endTs > startTs;
+
+  function prevMonth() {
+    if (month === 1) { setYear(y => y - 1); setMonth(12); }
+    else setMonth(m => m - 1);
+    setPage(0);
+  }
+  function nextMonth() {
+    if (month === 12) { setYear(y => y + 1); setMonth(1); }
+    else setMonth(m => m + 1);
+    setPage(0);
+  }
+
+  const periodStart = new Date(year, month - 1, 1).getTime();
+  const periodEnd   = new Date(year, month,     1).getTime();
 
   useEffect(() => {
     loadTrips({
       category: filter === 'all' ? undefined : filter,
-      from: targetMonth.getTime(),
-      to: nextMonth.getTime(),
+      from:  periodStart,
+      to:    periodEnd,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     });
-  }, [filter, monthOffset, page]);
+  }, [filter, year, month, page]);
+
+  async function handleEnd() {
+    if (!activeTrip) return;
+    setEnding(true);
+    try {
+      const secs = Math.round((Date.now() - activeTrip.start_time) / 1000);
+      const last = trackPoints[trackPoints.length - 1];
+      const km   = calcDistance(trackPoints.map(p => ({ lat: p.lat, lng: p.lng })));
+      await endTrip(activeTrip.id, {
+        endTime:         Date.now(),
+        endLat:          last?.lat,
+        endLng:          last?.lng,
+        durationSeconds: secs,
+        distanceKm:      km,
+      });
+      await loadStats();
+    } finally {
+      setEnding(false);
+    }
+  }
+
+  async function handleAddTrip(e: React.FormEvent) {
+    e.preventDefault();
+    if (!valid) return;
+    setSaving(true);
+    setFormError('');
+    try {
+      await addManualTrip({
+        startTime:       startTs,
+        endTime:         endTs,
+        startAddress:    form.startAddress.trim() || undefined,
+        endAddress:      form.endAddress.trim()   || undefined,
+        distanceKm:      form.distanceKm ? parseFloat(form.distanceKm) : undefined,
+        durationSeconds: Math.round((endTs - startTs) / 1000),
+        category:        form.category,
+        notes:           form.notes.trim() || undefined,
+      });
+      setShowForm(false);
+      setForm(emptyTripForm());
+      // navigate to the month of the saved trip
+      const d = new Date(startTs);
+      setYear(d.getFullYear());
+      setMonth(d.getMonth() + 1);
+      loadTrips({
+        category: filter === 'all' ? undefined : filter,
+        from: new Date(d.getFullYear(), d.getMonth(), 1).getTime(),
+        to:   new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(),
+        limit: PAGE_SIZE, offset: 0,
+      });
+      setPage(0);
+    } catch {
+      setFormError('Fehler beim Speichern.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleDelete(e: React.MouseEvent, trip: Trip) {
     e.stopPropagation();
-    if (!confirm(`Fahrt vom ${formatDate(trip.start_time)} löschen?`)) return;
     await deleteTrip(trip.id);
-    loadTrips({ category: filter === 'all' ? undefined : filter, limit: PAGE_SIZE });
+    setDeleteConfirm(null);
+    loadTrips({ category: filter === 'all' ? undefined : filter, from: periodStart, to: periodEnd, limit: PAGE_SIZE, offset: 0 });
   }
 
-  const monthLabel = targetMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-
-  function handleCreated() {
-    setShowAddModal(false);
-    loadTrips({
-      category: filter === 'all' ? undefined : filter,
-      from: targetMonth.getTime(),
-      to: nextMonth.getTime(),
-      limit: PAGE_SIZE,
-      offset: 0,
-    });
-    setPage(0);
-  }
+  const liveDist = calcDistance(trackPoints.map(p => ({ lat: p.lat, lng: p.lng })));
+  const totalPages = Math.ceil(totalTrips / PAGE_SIZE);
 
   return (
     <div>
-      {showAddModal && (
-        <AddTripModal onClose={() => setShowAddModal(false)} onCreated={handleCreated} />
-      )}
+      {/* Header */}
       <div className="page-header">
-        <div className="flex-between">
-          <div>
-            <h1>Fahrtenbuch</h1>
-            <p>{totalTrips} Fahrten gesamt</p>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--sp-xs)' }}>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
-              + Fahrt
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv()}>
-              ⬇ CSV
-            </button>
-          </div>
+        <div>
+          <h1 className="page-title">🚗 Fahrten</h1>
+          <p className="page-subtitle">{totalTrips} Fahrten gesamt</p>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-primary btn-sm" onClick={() => { setShowForm(s => !s); setForm(emptyTripForm()); }}>
+            {showForm ? '✕' : '+ Erfassen'}
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv()} title="CSV exportieren">
+            ⬇ CSV
+          </button>
         </div>
       </div>
 
-      {/* Month navigation */}
-      <div className="flex-between mb-md glass-sm" style={{ padding: '10px 16px', borderRadius: 'var(--r-full)' }}>
-        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setMonthOffset(o => o + 1); setPage(0); }}>
-          ←
-        </button>
-        <span style={{ fontWeight: 600, fontSize: 15 }}>{monthLabel}</span>
-        <button
-          className="btn btn-ghost btn-sm btn-icon"
-          onClick={() => { setMonthOffset(o => Math.max(0, o - 1)); setPage(0); }}
-          disabled={monthOffset === 0}
-        >
-          →
-        </button>
+      {/* Active trip banner */}
+      {isTracking && activeTrip && (
+        <div className="live-trip-card">
+          <div className="live-dot" />
+          <div className="live-trip-info" onClick={() => setView('active')} style={{ flex: 1, cursor: 'pointer' }}>
+            <div className="live-trip-title">Fahrt läuft · {elapsed}</div>
+            <div className="live-trip-sub">{liveDist > 0 ? formatKm(liveDist) : 'Standort wird erfasst…'}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={() => setView('active')}>Karte</button>
+          <button className="btn btn-danger btn-sm" onClick={handleEnd} disabled={ending}>
+            {ending ? '…' : '⏹ Ende'}
+          </button>
+        </div>
+      )}
+
+      {/* Period navigation */}
+      <div className="period-nav">
+        <button className="btn btn-ghost btn-icon" onClick={prevMonth}>‹</button>
+        <div className="period-nav-label">
+          <span className="period-month">{MONTH_NAMES[month - 1]}</span>
+          <span className="period-year">{year}</span>
+        </div>
+        <button className="btn btn-ghost btn-icon" onClick={nextMonth}>›</button>
       </div>
 
       {/* Category filter */}
-      <div className="toggle-group mb-md">
+      <div className="toggle-group" style={{ marginTop: 'var(--sp-sm)', marginBottom: 'var(--sp-md)' }}>
         {CATEGORIES.map(c => (
           <button
             key={c.value}
@@ -105,53 +218,177 @@ export function TripHistory() {
         ))}
       </div>
 
+      {/* Inline add form */}
+      {showForm && (
+        <div className="glass inline-form">
+          <h3 className="inline-form-title">Fahrt manuell erfassen</h3>
+          <form onSubmit={handleAddTrip}>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Startzeit</label>
+                <input
+                  type="datetime-local"
+                  className="form-input"
+                  value={form.startVal}
+                  onChange={e => setForm(f => ({ ...f, startVal: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Endzeit</label>
+                <input
+                  type="datetime-local"
+                  className="form-input"
+                  value={form.endVal}
+                  onChange={e => setForm(f => ({ ...f, endVal: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+
+            {valid && endTs > startTs && (
+              <p className="form-hint">
+                Dauer: {formatDuration(Math.round((endTs - startTs) / 1000))}
+              </p>
+            )}
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Von</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Startadresse"
+                  value={form.startAddress}
+                  onChange={e => setForm(f => ({ ...f, startAddress: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Nach</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Zieladresse"
+                  value={form.endAddress}
+                  onChange={e => setForm(f => ({ ...f, endAddress: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Distanz (km)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="z.B. 42.5"
+                  min="0" step="0.1"
+                  value={form.distanceKm}
+                  onChange={e => setForm(f => ({ ...f, distanceKm: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Notiz</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Optional"
+                  value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Kategorie</label>
+              <div className="toggle-group">
+                {([
+                  { value: 'private',      label: '🏠 Privat'     },
+                  { value: 'business',     label: '💼 Beruflich'  },
+                  { value: 'unclassified', label: '❓ Offen'       },
+                ] as { value: TripCategory; label: string }[]).map(c => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    className={`toggle-btn ${form.category === c.value ? 'active' : ''}`}
+                    onClick={() => setForm(f => ({ ...f, category: c.value }))}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {formError && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 'var(--sp-sm)' }}>{formError}</p>}
+
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>
+                Abbrechen
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={saving || !valid}>
+                {saving ? '…' : '✓ Speichern'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Trip list */}
       {trips.length === 0 ? (
         <div className="glass">
           <div className="empty-state">
             <div className="empty-icon">🗓️</div>
             <h3>Keine Fahrten</h3>
-            <p>In diesem Monat wurden keine {filter !== 'all' ? categoryLabel(filter) + 'en' : ''} Fahrten aufgezeichnet.</p>
+            <p>{MONTH_NAMES[month - 1]} {year} — nichts aufgezeichnet</p>
           </div>
         </div>
       ) : (
-        <div className="glass" style={{ padding: 0 }}>
-          {trips.map((trip) => (
+        <div className="glass list-card">
+          {trips.map(trip => (
             <div
               key={trip.id}
-              className="trip-item"
+              className="list-item"
               onClick={() => setView('detail', trip.id)}
-              style={{ position: 'relative' }}
             >
-              <div className={`trip-item-icon ${trip.category}`}>
-                {trip.category === 'business' ? '💼' : trip.category === 'private' ? '🏠' : '❓'}
+              <div className={`list-item-icon-box ${trip.category}`}>
+                {categoryEmoji(trip.category)}
               </div>
-              <div className="trip-item-info">
-                <div className="trip-item-route">
+              <div className="list-item-body">
+                <div className="list-item-title">
                   {trip.start_address
                     ? `${trip.start_address.split(',')[0]}${trip.end_address ? ` → ${trip.end_address.split(',')[0]}` : ''}`
                     : `Fahrt am ${formatDate(trip.start_time)}`}
                 </div>
-                <div className="trip-item-meta">
+                <div className="list-item-sub">
                   {formatDate(trip.start_time)}, {formatTime(trip.start_time)}
                   {trip.end_time && ` – ${formatTime(trip.end_time)}`}
-                  {' · '}<span className={`badge badge-${trip.category}`}>{categoryLabel(trip.category)}</span>
+                  {' · '}
+                  <span className={`badge badge-${trip.category}`}>{categoryLabel(trip.category)}</span>
                 </div>
                 {trip.traffic_delay_seconds && trip.traffic_delay_seconds > 120 && (
-                  <div style={{ fontSize: 12, color: 'var(--orange)', marginTop: 2 }}>
+                  <div className="list-item-tag" style={{ color: 'var(--orange)' }}>
                     🚦 +{formatDuration(trip.traffic_delay_seconds)} Stau
                   </div>
                 )}
               </div>
-              <div className="trip-item-stats">
-                {trip.distance_km != null && <div className="trip-item-km">{formatKm(trip.distance_km)}</div>}
-                {trip.duration_seconds != null && <div className="trip-item-time">{formatDuration(trip.duration_seconds)}</div>}
-                <button
-                  style={{ marginTop: 4, fontSize: 12, color: 'var(--red)', background: 'none', border: 'none', cursor: 'pointer' }}
-                  onClick={(e) => handleDelete(e, trip)}
-                >
-                  🗑
-                </button>
+              <div className="list-item-end">
+                {trip.distance_km != null && <div className="list-item-value">{formatKm(trip.distance_km)}</div>}
+                {trip.duration_seconds != null && <div className="list-item-label">{formatDuration(trip.duration_seconds)}</div>}
+                <div className="list-item-actions" onClick={e => e.stopPropagation()}>
+                  {deleteConfirm === trip.id ? (
+                    <>
+                      <button className="btn btn-danger btn-sm" onClick={e => handleDelete(e, trip)}>Löschen</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm(null)}>✕</button>
+                    </>
+                  ) : (
+                    <button
+                      className="btn btn-ghost btn-icon btn-sm"
+                      onClick={() => setDeleteConfirm(trip.id)}
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -159,13 +396,13 @@ export function TripHistory() {
       )}
 
       {/* Pagination */}
-      {totalTrips > PAGE_SIZE && (
-        <div className="flex-center gap-sm mt-md">
+      {totalPages > 1 && (
+        <div className="flex-center gap-sm" style={{ marginTop: 'var(--sp-md)' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
             ← Zurück
           </button>
           <span className="text-secondary" style={{ fontSize: 14 }}>
-            Seite {page + 1} von {Math.ceil(totalTrips / PAGE_SIZE)}
+            {page + 1} / {totalPages}
           </span>
           <button
             className="btn btn-ghost btn-sm"
@@ -178,4 +415,20 @@ export function TripHistory() {
       )}
     </div>
   );
+}
+
+function calcDistance(points: { lat: number; lng: number }[]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const R = 6371;
+    const dLat = ((points[i].lat - points[i - 1].lat) * Math.PI) / 180;
+    const dLng = ((points[i].lng - points[i - 1].lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((points[i - 1].lat * Math.PI) / 180) *
+      Math.cos((points[i].lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+    total += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+  return total;
 }

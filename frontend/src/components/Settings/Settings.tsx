@@ -78,8 +78,10 @@ export function Settings() {
   return (
     <div>
       <div className="page-header">
-        <h1>Einstellungen</h1>
-        <p>MyAuto konfigurieren</p>
+        <div>
+          <h1 className="page-title">⚙️ Einstellungen</h1>
+          <p className="page-subtitle">MyAuto konfigurieren</p>
+        </div>
       </div>
 
       {/* Maps API */}
