@@ -71,10 +71,18 @@
     --text-secondary: rgba(0,0,0,0.55);
     --text-tertiary: rgba(0,0,0,0.30);
   }
+  html { background: #e8f4fd; }
 }
 
 /* ---- Reset ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  overscroll-behavior: none;
+  /* Fills safe areas with the app background color on iOS */
+  background: #0a0a2e;
+}
 
 html, body, #root {
   height: 100%;
@@ -168,6 +176,7 @@ body::after {
   display: flex;
   flex-direction: column;
   padding: var(--sp-lg) var(--sp-md);
+  padding-top: calc(var(--sp-lg) + env(safe-area-inset-top));
   gap: var(--sp-sm);
   border-right: 1px solid var(--glass-border);
   background: var(--glass-bg);
@@ -230,8 +239,8 @@ body::after {
 .tab-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: calc(var(--tab-bar-height) + var(--safe-bottom));
-  padding-bottom: var(--safe-bottom);
+  height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -268,14 +277,18 @@ body::after {
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--sp-xl);
-  padding-bottom: calc(var(--tab-bar-height) + var(--safe-bottom) + var(--sp-xl));
+  padding-top: calc(var(--sp-xl) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + var(--sp-xl));
   scroll-behavior: smooth;
 }
 
 @media (min-width: 768px) {
   .sidebar { display: flex; }
   .tab-bar { display: none; }
-  .main-content { padding-bottom: var(--sp-xl); }
+  .main-content {
+    padding-top: var(--sp-xl);
+    padding-bottom: var(--sp-xl);
+  }
 }
 
 @media (max-width: 767px) {
