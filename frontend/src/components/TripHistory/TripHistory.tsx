@@ -6,6 +6,7 @@ import {
   categoryLabel, categoryEmoji, liveElapsed,
 } from '../../utils/format';
 import { api } from '../../api/client';
+import { AddressSearch, PlaceResult } from '../ui/AddressSearch';
 
 // ---- helpers for inline add-form ----
 function toDatetimeLocal(ts: number): string {
@@ -28,13 +29,17 @@ const MONTH_NAMES = [
 ];
 
 const emptyTripForm = () => ({
-  startVal: toDatetimeLocal(Date.now() - 3_600_000),
-  endVal:   toDatetimeLocal(Date.now()),
+  startVal:    toDatetimeLocal(Date.now() - 3_600_000),
+  endVal:      toDatetimeLocal(Date.now()),
   startAddress: '',
   endAddress:   '',
-  distanceKm:   '',
-  category:     'unclassified' as TripCategory,
-  notes:        '',
+  startLat: undefined as number | undefined,
+  startLng: undefined as number | undefined,
+  endLat:   undefined as number | undefined,
+  endLng:   undefined as number | undefined,
+  distanceKm: '',
+  category:   'unclassified' as TripCategory,
+  notes:      '',
 });
 
 export function TripHistory() {
@@ -127,6 +132,10 @@ export function TripHistory() {
         endTime:         endTs,
         startAddress:    form.startAddress.trim() || undefined,
         endAddress:      form.endAddress.trim()   || undefined,
+        startLat:        form.startLat,
+        startLng:        form.startLng,
+        endLat:          form.endLat,
+        endLng:          form.endLng,
         distanceKm:      form.distanceKm ? parseFloat(form.distanceKm) : undefined,
         durationSeconds: Math.round((endTs - startTs) / 1000),
         category:        form.category,
@@ -223,89 +232,89 @@ export function TripHistory() {
         <div className="glass inline-form">
           <h3 className="inline-form-title">Fahrt manuell erfassen</h3>
           <form onSubmit={handleAddTrip}>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Startzeit</label>
-                <input
-                  type="datetime-local"
-                  className="form-input"
-                  value={form.startVal}
-                  onChange={e => setForm(f => ({ ...f, startVal: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Endzeit</label>
-                <input
-                  type="datetime-local"
-                  className="form-input"
-                  value={form.endVal}
-                  onChange={e => setForm(f => ({ ...f, endVal: e.target.value }))}
-                  required
-                />
-              </div>
+
+            {/* Von */}
+            <div className="form-group">
+              <label className="form-label">Von</label>
+              <AddressSearch
+                value={form.startAddress}
+                onChange={v => setForm(f => ({ ...f, startAddress: v, startLat: undefined, startLng: undefined }))}
+                onPlace={(p: PlaceResult) => setForm(f => ({ ...f, startAddress: p.address, startLat: p.lat, startLng: p.lng }))}
+                placeholder="Startadresse suchen…"
+              />
+              {form.startLat && (
+                <p className="form-hint" style={{ textAlign: 'left', marginTop: 4 }}>
+                  📍 {form.startLat.toFixed(5)}, {form.startLng?.toFixed(5)}
+                </p>
+              )}
             </div>
 
-            {valid && endTs > startTs && (
-              <p className="form-hint">
-                Dauer: {formatDuration(Math.round((endTs - startTs) / 1000))}
-              </p>
-            )}
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Von</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Startadresse"
-                  value={form.startAddress}
-                  onChange={e => setForm(f => ({ ...f, startAddress: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Nach</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Zieladresse"
-                  value={form.endAddress}
-                  onChange={e => setForm(f => ({ ...f, endAddress: e.target.value }))}
-                />
-              </div>
+            {/* Nach */}
+            <div className="form-group">
+              <label className="form-label">Nach</label>
+              <AddressSearch
+                value={form.endAddress}
+                onChange={v => setForm(f => ({ ...f, endAddress: v, endLat: undefined, endLng: undefined }))}
+                onPlace={(p: PlaceResult) => setForm(f => ({ ...f, endAddress: p.address, endLat: p.lat, endLng: p.lng }))}
+                placeholder="Zieladresse suchen…"
+              />
+              {form.endLat && (
+                <p className="form-hint" style={{ textAlign: 'left', marginTop: 4 }}>
+                  📍 {form.endLat.toFixed(5)}, {form.endLng?.toFixed(5)}
+                </p>
+              )}
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Distanz (km)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="z.B. 42.5"
-                  min="0" step="0.1"
-                  value={form.distanceKm}
-                  onChange={e => setForm(f => ({ ...f, distanceKm: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notiz</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Optional"
-                  value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                />
-              </div>
+            {/* Abfahrt */}
+            <div className="form-group">
+              <label className="form-label">Abfahrt</label>
+              <input
+                type="datetime-local"
+                className="form-input"
+                value={form.startVal}
+                onChange={e => setForm(f => ({ ...f, startVal: e.target.value }))}
+                required
+              />
             </div>
 
+            {/* Ankunft */}
+            <div className="form-group">
+              <label className="form-label">Ankunft</label>
+              <input
+                type="datetime-local"
+                className="form-input"
+                value={form.endVal}
+                onChange={e => setForm(f => ({ ...f, endVal: e.target.value }))}
+                required
+              />
+              {valid && endTs > startTs && (
+                <p className="form-hint" style={{ textAlign: 'left', marginTop: 4 }}>
+                  Dauer: {formatDuration(Math.round((endTs - startTs) / 1000))}
+                </p>
+              )}
+            </div>
+
+            {/* Distanz */}
+            <div className="form-group">
+              <label className="form-label">Distanz (km)</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="z.B. 42.5"
+                min="0" step="0.1"
+                value={form.distanceKm}
+                onChange={e => setForm(f => ({ ...f, distanceKm: e.target.value }))}
+              />
+            </div>
+
+            {/* Kategorie */}
             <div className="form-group">
               <label className="form-label">Kategorie</label>
               <div className="toggle-group">
                 {([
-                  { value: 'private',      label: '🏠 Privat'     },
-                  { value: 'business',     label: '💼 Beruflich'  },
-                  { value: 'unclassified', label: '❓ Offen'       },
+                  { value: 'private',      label: '🏠 Privat'    },
+                  { value: 'business',     label: '💼 Beruflich' },
+                  { value: 'unclassified', label: '❓ Offen'      },
                 ] as { value: TripCategory; label: string }[]).map(c => (
                   <button
                     key={c.value}
@@ -317,6 +326,18 @@ export function TripHistory() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Notiz */}
+            <div className="form-group">
+              <label className="form-label">Notiz (optional)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Zweck der Fahrt, Kundenname, …"
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              />
             </div>
 
             {formError && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 'var(--sp-sm)' }}>{formError}</p>}
