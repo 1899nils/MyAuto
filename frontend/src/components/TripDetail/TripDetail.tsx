@@ -251,7 +251,7 @@ export function TripDetail() {
       {/* ── Map ────────────────────────────────────── */}
       {settings?.googleMapsApiKey && !noRouteData ? (
         <div className="trip-detail-map glass">
-          <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: 'var(--r-lg)' }} />
+          <div ref={mapRef} style={{ width: '100%', height: '280px', borderRadius: 'var(--r-lg)' }} />
         </div>
       ) : (
         <div className="trip-detail-map glass flex-center">
