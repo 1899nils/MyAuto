@@ -108,6 +108,30 @@ export interface MaintenanceEntryRaw {
   created_at: number;
 }
 
+export interface MonthDataPoint {
+  month: string;
+  km: number;
+  count: number;
+  business_km: number;
+  private_km: number;
+}
+
+export interface WeekdayDataPoint {
+  day: string;
+  km: number;
+  count: number;
+}
+
+export interface YearStats {
+  year: number;
+  totals: { trips: number; km: number; hours: number; avg_km: number; max_km: number };
+  costs: { fuel_eur: number; fuel_liters: number; maintenance_eur: number; maintenance_count: number; total_eur: number };
+  tax: { business_km: number; pauschale: number };
+  monthData: MonthDataPoint[];
+  weekdayData: WeekdayDataPoint[];
+  byCategory: { category: string; km: number; count: number }[];
+}
+
 export interface Vehicle {
   id: number;
   name: string;
