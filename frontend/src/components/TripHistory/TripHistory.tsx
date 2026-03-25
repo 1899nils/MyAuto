@@ -73,6 +73,16 @@ export function TripHistory() {
 
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
+  // PDF export
+  const [showPdfMenu, setShowPdfMenu] = useState(false);
+  const [pdfYear, setPdfYear] = useState(now.getFullYear());
+  useEffect(() => {
+    if (!showPdfMenu) return;
+    const handler = () => setShowPdfMenu(false);
+    setTimeout(() => window.addEventListener('click', handler), 0);
+    return () => window.removeEventListener('click', handler);
+  }, [showPdfMenu]);
+
   const startTs = fromDatetimeLocal(form.startVal);
   const endTs   = fromDatetimeLocal(form.endVal);
   const valid   = endTs > startTs;
@@ -186,6 +196,46 @@ export function TripHistory() {
           <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv()} title="CSV exportieren">
             ⬇ CSV
           </button>
+          <div style={{ position: 'relative' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowPdfMenu(s => !s)} title="Fahrtenbuch PDF">
+              📄 PDF
+            </button>
+            {showPdfMenu && (
+              <div className="glass" style={{
+                position: 'absolute', right: 0, top: '110%', zIndex: 100,
+                padding: 'var(--sp-md)', minWidth: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              }}>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 'var(--sp-sm)' }}>
+                  Steuerliches Fahrtenbuch
+                </p>
+                <div className="form-group" style={{ marginBottom: 'var(--sp-sm)' }}>
+                  <label className="form-label">Jahr</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={pdfYear}
+                    min={2020} max={now.getFullYear()}
+                    onChange={e => setPdfYear(Number(e.target.value))}
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-xs)' }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => { api.exportLogbookPdf(pdfYear, 'business'); setShowPdfMenu(false); }}
+                  >
+                    💼 Berufliche Fahrten
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { api.exportLogbookPdf(pdfYear, 'private'); setShowPdfMenu(false); }}
+                  >
+                    🏠 Private Fahrten
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

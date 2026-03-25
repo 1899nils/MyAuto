@@ -50,6 +50,9 @@ export const api = {
 
   exportCsv: () => window.open(`${BASE}/trips/export/csv`, '_blank'),
 
+  exportLogbookPdf: (year: number, category: 'business' | 'private' = 'business') =>
+    window.open(`${BASE}/logbook/pdf?year=${year}&category=${category}`, '_blank'),
+
   // Track Points
   addTrackPoints: (tripId: number, points: Omit<TrackPoint, 'id' | 'trip_id'>[]) =>
     req<{ inserted: number }>(`/trips/${tripId}/points`, { method: 'POST', body: JSON.stringify(points) }),
