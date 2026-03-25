@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { useBluetooth } from '../../hooks/useBluetooth';
 import { formatDate, formatTime, formatKm, formatDuration, liveElapsed, categoryLabel, categoryEmoji } from '../../utils/format';
-import { Trip } from '../../types';
+import { Trip, MaintenanceEntryRaw } from '../../types';
+import { api } from '../../api/client';
 
 export function Dashboard() {
   const { stats, trips, settings, activeTrip, isTracking, loadStats, loadTrips, startTrip, endTrip, trackPoints, setView } = useTripStore();
@@ -11,8 +12,17 @@ export function Dashboard() {
   const [ending, setEnding] = useState(false);
   const [elapsed, setElapsed] = useState('');
   const [btError, setBtError] = useState('');
+  const [dueEntries, setDueEntries] = useState<MaintenanceEntryRaw[]>([]);
+  const [dueNow, setDueNow] = useState<number>(Date.now());
 
-  useEffect(() => { loadStats(); loadTrips({ limit: 5 }); }, []);
+  useEffect(() => {
+    loadStats();
+    loadTrips({ limit: 5 });
+    api.getMaintenanceDue().then(data => {
+      setDueEntries(data.entries as MaintenanceEntryRaw[]);
+      setDueNow(data.now);
+    }).catch(() => {/* ignore */});
+  }, []);
 
   useEffect(() => {
     if (!activeTrip) { setElapsed(''); return; }
@@ -124,6 +134,43 @@ export function Dashboard() {
           )}
         </div>
       )}
+
+      {/* Maintenance alerts */}
+      {dueEntries.length > 0 && (() => {
+        const overdue = dueEntries.filter(e => e.next_date != null && e.next_date < dueNow);
+        const upcoming = dueEntries.filter(e => e.next_date != null && e.next_date >= dueNow);
+        const preview = dueEntries.slice(0, 3);
+        return (
+          <div
+            className={`glass dash-maintenance-alert ${overdue.length > 0 ? 'dash-alert-overdue' : 'dash-alert-due'}`}
+            style={{ marginBottom: 'var(--sp-md)', cursor: 'pointer' }}
+            onClick={() => setView('wartung')}
+          >
+            <div className="dash-alert-header">
+              {overdue.length > 0
+                ? <span className="dash-alert-badge badge-overdue">⚠️ Wartung überfällig</span>
+                : <span className="dash-alert-badge badge-due">🔔 Wartung fällig</span>
+              }
+              <span className="dash-alert-action">Alle anzeigen →</span>
+            </div>
+            <div className="dash-alert-items">
+              {preview.map(e => {
+                const days = e.next_date != null ? Math.round((e.next_date - dueNow) / (1000 * 60 * 60 * 24)) : null;
+                return (
+                  <div key={e.id} className="dash-alert-item">
+                    <span className="dash-alert-item-title">{e.title}</span>
+                    {days != null && (
+                      <span className={`dash-days-chip ${days < 0 ? 'chip-overdue' : 'chip-due'}`}>
+                        {days < 0 ? `${Math.abs(days)}d überfällig` : days === 0 ? 'Heute' : `in ${days}d`}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Stats */}
       <div className="stats-row">

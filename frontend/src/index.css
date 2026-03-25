@@ -1110,3 +1110,270 @@ details[open] .yearly-stats-title::before { content: '▾'; }
   }
 }
 .fuel-total-input { font-size: 18px; font-weight: 600; }
+
+/* ============================================================
+   Wartung (Maintenance Plan)
+   ============================================================ */
+.wartung-view { display: flex; flex-direction: column; gap: var(--sp-sm); }
+
+/* Entry list */
+.wartung-list { display: flex; flex-direction: column; gap: var(--sp-sm); }
+
+/* Card */
+.wartung-card {
+  padding: var(--sp-md);
+  border-radius: var(--r-lg);
+  transition: box-shadow 0.2s var(--ease);
+}
+.wartung-card.wartung-due {
+  border-color: rgba(255, 149, 0, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.3), var(--glass-shadow-sm);
+}
+.wartung-card.wartung-overdue {
+  border-color: rgba(255, 59, 48, 0.50);
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.35), var(--glass-shadow-sm);
+}
+
+/* Card header row */
+.wartung-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-sm);
+}
+
+.wartung-type-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.wartung-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wartung-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wartung-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.wartung-type-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.wartung-meta-item {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.wartung-card-notes {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* Card actions */
+.wartung-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Next service info bar */
+.wartung-next-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--sp-sm);
+  padding-top: var(--sp-sm);
+  border-top: 1px solid var(--glass-border);
+  font-size: 13px;
+}
+.wartung-next-info.wartung-due   { border-top-color: rgba(255, 149, 0, 0.35); }
+.wartung-next-info.wartung-overdue { border-top-color: rgba(255, 59, 48, 0.40); }
+
+.wartung-next-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wartung-next-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.wartung-next-odo {
+  color: var(--text-secondary);
+}
+
+/* Days badge */
+.wartung-days-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+}
+.wartung-days-badge.overdue {
+  background: rgba(255, 59, 48, 0.18);
+  color: var(--red);
+  border: 1px solid rgba(255, 59, 48, 0.35);
+}
+.wartung-days-badge.due {
+  background: rgba(255, 149, 0, 0.18);
+  color: var(--orange);
+  border: 1px solid rgba(255, 149, 0, 0.35);
+}
+.wartung-days-badge.ok {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--green);
+  border: 1px solid rgba(52, 199, 89, 0.30);
+}
+
+/* Next section in form */
+.wartung-next-section {
+  margin-top: var(--sp-sm);
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: var(--r-md);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  margin-bottom: var(--sp-sm);
+}
+.wartung-next-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--sp-xs);
+}
+
+/* Error banner */
+.wartung-error {
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: var(--r-md);
+  color: var(--red);
+  border-color: rgba(255, 59, 48, 0.35);
+  font-size: 14px;
+}
+
+/* ============================================================
+   Dashboard – Maintenance Alert Card
+   ============================================================ */
+.dash-maintenance-alert {
+  border-radius: var(--r-lg);
+  padding: var(--sp-md);
+  transition: box-shadow 0.2s var(--ease);
+}
+.dash-maintenance-alert:hover {
+  box-shadow: var(--glass-shadow), 0 0 0 1px var(--glass-border-strong);
+}
+.dash-alert-overdue {
+  border-color: rgba(255, 59, 48, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.25), var(--glass-shadow-sm);
+}
+.dash-alert-due {
+  border-color: rgba(255, 149, 0, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.25), var(--glass-shadow-sm);
+}
+
+.dash-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-sm);
+}
+
+.dash-alert-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+}
+.badge-overdue {
+  background: rgba(255, 59, 48, 0.18);
+  color: var(--red);
+  border: 1px solid rgba(255, 59, 48, 0.35);
+}
+.badge-due {
+  background: rgba(255, 149, 0, 0.18);
+  color: var(--orange);
+  border: 1px solid rgba(255, 149, 0, 0.35);
+}
+
+.dash-alert-action {
+  font-size: 12px;
+  color: var(--accent-light);
+  font-weight: 500;
+}
+
+.dash-alert-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-alert-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.dash-alert-item-title {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-days-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.chip-overdue {
+  background: rgba(255, 59, 48, 0.18);
+  color: var(--red);
+  border: 1px solid rgba(255, 59, 48, 0.30);
+}
+.chip-due {
+  background: rgba(255, 149, 0, 0.18);
+  color: var(--orange);
+  border: 1px solid rgba(255, 149, 0, 0.30);
+}
