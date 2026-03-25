@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
-import { TripCategory, Trip } from '../../types';
+import { TripCategory, Trip, Vehicle } from '../../types';
 import {
   formatDate, formatTime, formatKm, formatDuration,
   categoryLabel, categoryEmoji, liveElapsed,
@@ -40,6 +40,7 @@ const emptyTripForm = () => ({
   distanceKm: '',
   category:   'unclassified' as TripCategory,
   notes:      '',
+  vehicleId:  undefined as number | undefined,
 });
 
 export function TripHistory() {
@@ -53,8 +54,13 @@ export function TripHistory() {
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [filter, setFilter] = useState<TripCategory | 'all'>('all');
+  const [vehicleFilter, setVehicleFilter] = useState<number | undefined>(undefined);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 20;
+
+  // load vehicles for filter + form
+  useEffect(() => { api.getVehicles().then(r => setVehicles(r.vehicles)); }, []);
 
   // live elapsed for active trip
   const [elapsed, setElapsed] = useState('');
@@ -103,13 +109,14 @@ export function TripHistory() {
 
   useEffect(() => {
     loadTrips({
-      category: filter === 'all' ? undefined : filter,
-      from:  periodStart,
-      to:    periodEnd,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      category:   filter === 'all' ? undefined : filter,
+      vehicle_id: vehicleFilter,
+      from:       periodStart,
+      to:         periodEnd,
+      limit:      PAGE_SIZE,
+      offset:     page * PAGE_SIZE,
     });
-  }, [filter, year, month, page]);
+  }, [filter, vehicleFilter, year, month, page]);
 
   async function handleEnd() {
     if (!activeTrip) return;
@@ -150,6 +157,7 @@ export function TripHistory() {
         durationSeconds: Math.round((endTs - startTs) / 1000),
         category:        form.category,
         notes:           form.notes.trim() || undefined,
+        vehicleId:       form.vehicleId,
       });
       setShowForm(false);
       setForm(emptyTripForm());
@@ -265,16 +273,29 @@ export function TripHistory() {
       </div>
 
       {/* Category filter */}
-      <div className="toggle-group" style={{ marginTop: 'var(--sp-sm)', marginBottom: 'var(--sp-md)' }}>
-        {CATEGORIES.map(c => (
-          <button
-            key={c.value}
-            className={`toggle-btn ${filter === c.value ? 'active' : ''}`}
-            onClick={() => { setFilter(c.value); setPage(0); }}
+      <div style={{ display: 'flex', gap: 'var(--sp-sm)', alignItems: 'center', marginTop: 'var(--sp-sm)', marginBottom: 'var(--sp-md)', flexWrap: 'wrap' }}>
+        <div className="toggle-group">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.value}
+              className={`toggle-btn ${filter === c.value ? 'active' : ''}`}
+              onClick={() => { setFilter(c.value); setPage(0); }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        {vehicles.length > 0 && (
+          <select
+            className="form-input"
+            style={{ width: 'auto', minWidth: 140, fontSize: 13 }}
+            value={vehicleFilter ?? ''}
+            onChange={e => { setVehicleFilter(e.target.value ? Number(e.target.value) : undefined); setPage(0); }}
           >
-            {c.label}
-          </button>
-        ))}
+            <option value="">🚗 Alle Fahrzeuge</option>
+            {vehicles.map(v => <option key={v.id} value={v.id}>{v.name as string}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Inline add form */}
@@ -377,6 +398,21 @@ export function TripHistory() {
                 ))}
               </div>
             </div>
+
+            {/* Fahrzeug */}
+            {vehicles.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Fahrzeug</label>
+                <select
+                  className="form-input"
+                  value={form.vehicleId ?? ''}
+                  onChange={e => setForm(f => ({ ...f, vehicleId: e.target.value ? Number(e.target.value) : undefined }))}
+                >
+                  <option value="">– kein Fahrzeug –</option>
+                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.name as string}</option>)}
+                </select>
+              </div>
+            )}
 
             {/* Notiz */}
             <div className="form-group">

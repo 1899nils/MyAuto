@@ -17,6 +17,7 @@ export interface Trip {
   notes?: string;
   bluetooth_device?: string;
   route_polyline?: string;
+  vehicle_id?: number | null;
   created_at: number;
 }
 
@@ -148,5 +149,11 @@ export interface Vehicle {
   notes?: string;
   photoPath?: string;
   isActive: boolean;
+  odometerKm?: number | null;
   createdAt: number;
+  // computed by API
+  tripCount?: number;
+  totalKm?: number;
+  maintCount?: number;
+  dueMaintCount?: number;
 }

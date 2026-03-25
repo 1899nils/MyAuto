@@ -11,9 +11,12 @@ import vehiclesRouter from './routes/vehicles';
 import maintenanceRouter from './routes/maintenance';
 import logbookRouter from './routes/logbook';
 import statsRouter from './routes/stats';
+import { runMigrations } from './db/migrations';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+runMigrations();
 
 app.use(compression());
 app.use(cors({ origin: true, credentials: true }));

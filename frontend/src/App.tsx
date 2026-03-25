@@ -6,20 +6,18 @@ import { TripHistory } from './components/TripHistory/TripHistory';
 import { TripDetail } from './components/TripDetail/TripDetail';
 import { Settings } from './components/Settings/Settings';
 import { Spritmonitor } from './components/Spritmonitor/Spritmonitor';
-import { Garage } from './components/Garage/Garage';
-import { Wartung } from './components/Wartung/Wartung';
+import { Fahrzeuge } from './components/Fahrzeuge/Fahrzeuge';
 import { Statistiken } from './components/Statistiken/Statistiken';
 import { ClassifyModal } from './components/ui/ClassifyModal';
 
-type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'garage' | 'wartung' | 'statistiken';
+type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken';
 
 const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
   { view: 'dashboard',   icon: '🏠', label: 'Dashboard'    },
   { view: 'history',     icon: '🗺️', label: 'Fahrten'      },
   { view: 'statistiken', icon: '📊', label: 'Statistiken'  },
   { view: 'fuel',        icon: '⛽', label: 'Sprit'         },
-  { view: 'garage',      icon: '🚘', label: 'Garage'        },
-  { view: 'wartung',     icon: '🔧', label: 'Wartung'       },
+  { view: 'fahrzeuge',   icon: '🚘', label: 'Fahrzeuge'     },
   { view: 'settings',    icon: '⚙️', label: 'Einstellungen' },
 ];
 
@@ -39,8 +37,7 @@ export default function App() {
       case 'detail': return <TripDetail />;
       case 'settings': return <Settings />;
       case 'fuel': return <Spritmonitor />;
-      case 'garage': return <Garage />;
-      case 'wartung': return <Wartung />;
+      case 'fahrzeuge': return <Fahrzeuge />;
       case 'statistiken': return <Statistiken />;
       default: return <Dashboard />;
     }
