@@ -1,4 +1,4 @@
-import { AppSettings, Trip, TrackPoint, TripCategory, TripStats } from '../types';
+import { AppSettings, Trip, TrackPoint, TripCategory, TripStats, Vehicle } from '../types';
 
 const BASE = '/api';
 
@@ -61,4 +61,32 @@ export const api = {
 
   updateSettings: (data: Partial<AppSettings>) =>
     req<{ ok: boolean }>('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Vehicles
+  getVehicles: () => req<{ vehicles: Vehicle[] }>('/vehicles'),
+
+  getVehicle: (id: number) => req<Vehicle>(`/vehicles/${id}`),
+
+  createVehicle: (data: FormData) =>
+    fetch('/api/vehicles', { method: 'POST', body: data }).then(r => {
+      if (!r.ok) throw new Error(`API /vehicles: ${r.status}`);
+      return r.json() as Promise<Vehicle>;
+    }),
+
+  updateVehicle: (id: number, data: FormData) =>
+    fetch(`/api/vehicles/${id}`, { method: 'PUT', body: data }).then(r => {
+      if (!r.ok) throw new Error(`API /vehicles/${id}: ${r.status}`);
+      return r.json() as Promise<Vehicle>;
+    }),
+
+  deleteVehicle: (id: number) => req<void>(`/vehicles/${id}`, { method: 'DELETE' }),
+
+  uploadVehiclePhoto: (id: number, file: File) => {
+    const fd = new FormData();
+    fd.append('photo', file);
+    return fetch(`/api/vehicles/${id}/photo`, { method: 'POST', body: fd }).then(r => {
+      if (!r.ok) throw new Error(`API /vehicles/${id}/photo: ${r.status}`);
+      return r.json() as Promise<Vehicle>;
+    });
+  },
 };

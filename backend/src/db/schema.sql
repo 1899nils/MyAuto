@@ -64,3 +64,22 @@ CREATE TABLE IF NOT EXISTS fuel_entries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_fuel_entries_date ON fuel_entries(date);
+
+CREATE TABLE IF NOT EXISTS vehicles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  make TEXT,
+  model TEXT,
+  year INTEGER,
+  color TEXT,
+  license_plate TEXT,
+  vin TEXT,
+  fuel_type TEXT DEFAULT 'gasoline',
+  tank_capacity_liters REAL,
+  insurance_company TEXT,
+  insurance_number TEXT,
+  notes TEXT,
+  photo_path TEXT,
+  is_active INTEGER DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
