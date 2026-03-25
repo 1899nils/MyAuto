@@ -5,6 +5,23 @@ import { useTripSync, useLiveStats } from '../../hooks/useTrip';
 import { formatDuration, formatKm, formatSpeed } from '../../utils/format';
 import { loadGoogleMaps, createTrafficLayer, createPolyline, createMarker } from '../../utils/maps';
 
+function useWakeLock(active: boolean) {
+  const lockRef = useRef<WakeLockSentinel | null>(null);
+  useEffect(() => {
+    if (!active || !('wakeLock' in navigator)) return;
+    let cancelled = false;
+    navigator.wakeLock.request('screen').then(lock => {
+      if (cancelled) { lock.release(); return; }
+      lockRef.current = lock;
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      lockRef.current?.release();
+      lockRef.current = null;
+    };
+  }, [active]);
+}
+
 export function ActiveTrip() {
   const { activeTrip, isTracking, trackPoints, endTrip, setView } = useTripStore();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -16,6 +33,7 @@ export function ActiveTrip() {
   const { distanceKm, avgSpeed } = useLiveStats();
   useGeolocation();
   useTripSync();
+  useWakeLock(isTracking);
 
   const settings = useTripStore(s => s.settings);
 
@@ -142,6 +160,17 @@ export function ActiveTrip() {
           <div style={{ fontSize: 20, fontWeight: 700 }}>{formatSpeed(avgSpeed)}</div>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ø Tempo</div>
         </div>
+      </div>
+
+      {/* Warning: keep tab open */}
+      <div style={{
+        position: 'absolute', bottom: 112, left: 16, right: 16, zIndex: 10,
+        background: 'rgba(255,160,0,0.15)', backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255,160,0,0.35)',
+        borderRadius: 'var(--r-md)', padding: '8px 12px',
+        fontSize: 12, color: 'rgba(255,220,100,0.9)', textAlign: 'center',
+      }}>
+        App muss im Vordergrund bleiben · Tab nicht schließen
       </div>
 
       {/* End button */}
