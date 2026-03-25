@@ -79,6 +79,35 @@ export interface FuelStats {
   fillCount: number;
 }
 
+export interface MaintenanceEntry {
+  id: number;
+  title: string;
+  type: 'oil_change' | 'tuev' | 'tires' | 'brakes' | 'service' | 'other';
+  date?: number;
+  odometerKm?: number;
+  cost?: number;
+  workshop?: string;
+  notes?: string;
+  nextDate?: number;
+  nextOdometerKm?: number;
+  createdAt: number;
+}
+
+// Raw shape returned by the API (snake_case from SQLite)
+export interface MaintenanceEntryRaw {
+  id: number;
+  title: string;
+  type: 'oil_change' | 'tuev' | 'tires' | 'brakes' | 'service' | 'other';
+  date: number | null;
+  odometer_km: number | null;
+  cost: number | null;
+  workshop: string | null;
+  notes: string | null;
+  next_date: number | null;
+  next_odometer_km: number | null;
+  created_at: number;
+}
+
 export interface Vehicle {
   id: number;
   name: string;

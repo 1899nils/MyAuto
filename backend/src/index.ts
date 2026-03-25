@@ -8,6 +8,7 @@ import trackpointsRouter from './routes/trackpoints';
 import settingsRouter from './routes/settings';
 import fuelRouter from './routes/fuel';
 import vehiclesRouter from './routes/vehicles';
+import maintenanceRouter from './routes/maintenance';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.use('/api/trips/:tripId/points', trackpointsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/fuel', fuelRouter);
 app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/maintenance', maintenanceRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, '../../frontend/dist');

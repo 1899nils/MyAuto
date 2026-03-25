@@ -1,4 +1,4 @@
-import { AppSettings, Trip, TrackPoint, TripCategory, TripStats, Vehicle } from '../types';
+import { AppSettings, Trip, TrackPoint, TripCategory, TripStats, Vehicle, MaintenanceEntryRaw } from '../types';
 
 const BASE = '/api';
 
@@ -80,6 +80,29 @@ export const api = {
     }),
 
   deleteVehicle: (id: number) => req<void>(`/vehicles/${id}`, { method: 'DELETE' }),
+
+  // Maintenance
+  getMaintenanceEntries: () =>
+    req<{ entries: MaintenanceEntryRaw[] }>('/maintenance'),
+
+  getMaintenanceDue: () =>
+    req<{ entries: MaintenanceEntryRaw[]; now: number }>('/maintenance/due'),
+
+  createMaintenanceEntry: (data: {
+    title: string; type: string;
+    date?: number | null; odometer_km?: number | null; cost?: number | null;
+    workshop?: string | null; notes?: string | null;
+    next_date?: number | null; next_odometer_km?: number | null;
+  }) => req<MaintenanceEntryRaw>('/maintenance', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateMaintenanceEntry: (id: number, data: {
+    title: string; type: string;
+    date?: number | null; odometer_km?: number | null; cost?: number | null;
+    workshop?: string | null; notes?: string | null;
+    next_date?: number | null; next_odometer_km?: number | null;
+  }) => req<MaintenanceEntryRaw>(`/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteMaintenanceEntry: (id: number) => req<void>(`/maintenance/${id}`, { method: 'DELETE' }),
 
   uploadVehiclePhoto: (id: number, file: File) => {
     const fd = new FormData();

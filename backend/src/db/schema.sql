@@ -65,6 +65,23 @@ CREATE TABLE IF NOT EXISTS fuel_entries (
 
 CREATE INDEX IF NOT EXISTS idx_fuel_entries_date ON fuel_entries(date);
 
+CREATE TABLE IF NOT EXISTS maintenance_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'service',
+  date INTEGER,
+  odometer_km REAL,
+  cost REAL,
+  workshop TEXT,
+  notes TEXT,
+  next_date INTEGER,
+  next_odometer_km REAL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_entries_date ON maintenance_entries(date);
+CREATE INDEX IF NOT EXISTS idx_maintenance_entries_next_date ON maintenance_entries(next_date);
+
 CREATE TABLE IF NOT EXISTS vehicles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
