@@ -5,6 +5,11 @@ import { Trip, TripCategory } from '../../types';
 import { formatDate, formatTime, formatKm, formatDuration, categoryLabel, categoryEmoji } from '../../utils/format';
 import { loadGoogleMaps, createPolyline } from '../../utils/maps';
 
+// Small helper to update a trip silently (fire-and-forget, no store re-render needed here)
+async function patchTrip(id: number, data: Parameters<typeof api.updateTrip>[1]) {
+  try { await api.updateTrip(id, data); } catch { /* ignore */ }
+}
+
 export function TripDetail() {
   const { selectedTripId, trips, settings, updateTrip, setView, deleteTrip } = useTripStore();
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -91,20 +96,23 @@ export function TripDetail() {
         if (e) placeMarker(e, 'B', '#FF3B30');
       }
 
-      // ── fallback 3: address strings → Directions API ─────────
+      // ── fallback 3a: address strings → Directions API ────────
       function tryAddressRoute() {
-        const origin: string | null = t.start_address?.trim() || null;
-        const destination: string | null = t.end_address?.trim() || null;
-        if (!origin || !destination) return;
+        const origin = t.start_address?.trim() || null;
+        const destination = t.end_address?.trim() || null;
+        if (!origin || !destination) {
+          // fallback 3b: straight line between coordinates
+          tryCoordRoute();
+          return;
+        }
 
         new google.maps.DirectionsService().route(
-          {
-            origin,
-            destination,
-            travelMode: google.maps.TravelMode.DRIVING,
-          },
+          { origin, destination, travelMode: google.maps.TravelMode.DRIVING },
           (result, status) => {
-            if (status !== google.maps.DirectionsStatus.OK || !result) return;
+            if (status !== google.maps.DirectionsStatus.OK || !result) {
+              tryCoordRoute();
+              return;
+            }
             const leg = result.routes[0].legs[0];
             const path = result.routes[0].overview_path
               .map(p => ({ lat: p.lat(), lng: p.lng() }));
@@ -113,8 +121,30 @@ export function TripDetail() {
               { lat: leg.start_location.lat(), lng: leg.start_location.lng() },
               { lat: leg.end_location.lat(),   lng: leg.end_location.lng()   },
             );
+            // Auto-save distance if not yet set
+            if (!t.distance_km && leg.distance?.value) {
+              const km = Math.round(leg.distance.value / 10) / 100;
+              setTrip(prev => prev ? { ...prev, distance_km: km } : prev);
+              patchTrip(t.id, { distanceKm: km });
+            }
           },
         );
+      }
+
+      // ── fallback 3b: straight line between stored coordinates ─
+      function tryCoordRoute() {
+        const s = t.start_lat && t.start_lng ? { lat: t.start_lat, lng: t.start_lng } : null;
+        const e = t.end_lat   && t.end_lng   ? { lat: t.end_lat,   lng: t.end_lng   } : null;
+        if (s) placeMarker(s, 'A', '#34C759');
+        if (e) placeMarker(e, 'B', '#FF3B30');
+        if (s && e) {
+          createPolyline([s, e]).setMap(map);
+          const bounds = new google.maps.LatLngBounds();
+          bounds.extend(s); bounds.extend(e);
+          map.fitBounds(bounds, { top: 48, right: 32, bottom: 48, left: 32 });
+        } else if (s) {
+          map.setCenter(s); map.setZoom(14);
+        }
       }
 
       // ── priority 1: encoded polyline ─────────────────────────
@@ -131,7 +161,7 @@ export function TripDetail() {
         if (points.length > 1) {
           drawRoute(points.map(p => ({ lat: p.lat, lng: p.lng })));
         } else {
-          // ── priority 3: derive route from addresses ───────────
+          // ── priority 3: derive route from addresses / coords ──
           tryAddressRoute();
         }
       });

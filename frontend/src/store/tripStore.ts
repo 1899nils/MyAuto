@@ -58,7 +58,13 @@ export const useTripStore = create<TripStore>((set, get) => ({
 
   loadStats: async () => {
     const stats = await api.getStats();
-    set({ stats, activeTrip: stats.activeTrip });
+    const hasActive = !!stats.activeTrip;
+    set({
+      stats,
+      activeTrip: stats.activeTrip ?? null,
+      // Restore tracking state after page reload
+      isTracking: hasActive ? true : get().isTracking,
+    });
   },
 
   loadTrips: async (params) => {
