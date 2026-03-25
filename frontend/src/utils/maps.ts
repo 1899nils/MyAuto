@@ -6,17 +6,39 @@ export function loadGoogleMaps(apiKey: string): Promise<void> {
   if (mapsLoading) return mapsLoading;
 
   mapsLoading = new Promise((resolve, reject) => {
+    // Script already in DOM (e.g. added but not yet ready)
     if (document.getElementById('google-maps-script')) {
-      mapsLoaded = true;
-      resolve();
+      if ((window as unknown as Record<string, unknown>)['google'] && (window as unknown as { google: { maps: unknown } }).google?.maps) {
+        mapsLoaded = true;
+        resolve();
+      } else {
+        const t = setInterval(() => {
+          if ((window as unknown as { google?: { maps?: unknown } }).google?.maps) {
+            clearInterval(t);
+            mapsLoaded = true;
+            resolve();
+          }
+        }, 50);
+        setTimeout(() => { clearInterval(t); reject(new Error('Maps timeout')); }, 15000);
+      }
       return;
     }
+
+    const callbackName = '__mapsReady';
+    (window as unknown as Record<string, unknown>)[callbackName] = () => {
+      mapsLoaded = true;
+      delete (window as unknown as Record<string, unknown>)[callbackName];
+      resolve();
+    };
+
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&callback=${callbackName}`;
     script.async = true;
-    script.onload = () => { mapsLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error('Google Maps failed to load'));
+    script.onerror = () => {
+      mapsLoading = null;
+      reject(new Error('Google Maps failed to load'));
+    };
     document.head.appendChild(script);
   });
 
