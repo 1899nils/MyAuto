@@ -5,29 +5,26 @@ const router = Router();
 
 // GET /api/trips - list with optional filters
 router.get('/', (req: Request, res: Response) => {
-  const { category, from, to, limit = '50', offset = '0' } = req.query;
+  const { category, from, to, vehicle_id, limit = '50', offset = '0' } = req.query;
 
-  let query = 'SELECT * FROM trips WHERE 1=1';
+  let where = '1=1';
   const params: unknown[] = [];
+  const countParams: unknown[] = [];
 
-  if (category) {
-    query += ' AND category = ?';
-    params.push(category);
-  }
-  if (from) {
-    query += ' AND start_time >= ?';
-    params.push(Number(from));
-  }
-  if (to) {
-    query += ' AND start_time <= ?';
-    params.push(Number(to));
+  function addFilter(clause: string, value: unknown) {
+    where += ` AND ${clause}`;
+    params.push(value);
+    countParams.push(value);
   }
 
-  query += ' ORDER BY start_time DESC LIMIT ? OFFSET ?';
-  params.push(Number(limit), Number(offset));
+  if (category)   addFilter('category = ?',   category);
+  if (from)       addFilter('start_time >= ?', Number(from));
+  if (to)         addFilter('start_time <= ?', Number(to));
+  if (vehicle_id) addFilter('vehicle_id = ?',  Number(vehicle_id));
 
-  const trips = db.prepare(query).all(...params);
-  const total = (db.prepare('SELECT COUNT(*) as count FROM trips WHERE 1=1').get() as { count: number }).count;
+  const trips = db.prepare(`SELECT * FROM trips WHERE ${where} ORDER BY start_time DESC LIMIT ? OFFSET ?`)
+    .all(...params, Number(limit), Number(offset));
+  const total = (db.prepare(`SELECT COUNT(*) as count FROM trips WHERE ${where}`).get(...countParams) as { count: number }).count;
 
   res.json({ trips, total });
 });
@@ -103,6 +100,7 @@ router.post('/', (req: Request, res: Response) => {
     // Manual trip fields (all optional – if endTime is provided, trip is saved as complete)
     startTime, endTime, startAddress, endAddress,
     endLat, endLng, distanceKm, durationSeconds, category: manualCategory, notes,
+    vehicleId,
   } = req.body;
 
   const now = Date.now();
@@ -120,9 +118,9 @@ router.post('/', (req: Request, res: Response) => {
     INSERT INTO trips (
       start_time, start_lat, start_lng, bluetooth_device, category, created_at,
       end_time, end_lat, end_lng, start_address, end_address,
-      distance_km, duration_seconds, notes
+      distance_km, duration_seconds, notes, vehicle_id
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     tripStartTime,
     startLat || null,
@@ -138,6 +136,7 @@ router.post('/', (req: Request, res: Response) => {
     distanceKm || null,
     calcDuration,
     notes || null,
+    vehicleId || null,
   );
 
   const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(result.lastInsertRowid);
@@ -149,7 +148,7 @@ router.put('/:id', (req: Request, res: Response) => {
   const {
     endTime, endLat, endLng, endAddress, startAddress,
     distanceKm, durationSeconds, trafficDelaySeconds,
-    category, notes, routePolyline
+    category, notes, routePolyline, vehicleId
   } = req.body;
 
   const fields: string[] = [];
@@ -166,6 +165,7 @@ router.put('/:id', (req: Request, res: Response) => {
   if (category !== undefined) { fields.push('category = ?'); params.push(category); }
   if (notes !== undefined) { fields.push('notes = ?'); params.push(notes); }
   if (routePolyline !== undefined) { fields.push('route_polyline = ?'); params.push(routePolyline); }
+  if (vehicleId !== undefined)     { fields.push('vehicle_id = ?');    params.push(vehicleId || null); }
 
   if (fields.length === 0) return res.status(400).json({ error: 'No fields to update' });
 

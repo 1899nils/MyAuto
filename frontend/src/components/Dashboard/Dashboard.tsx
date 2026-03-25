@@ -144,7 +144,7 @@ export function Dashboard() {
           <div
             className={`glass dash-maintenance-alert ${overdue.length > 0 ? 'dash-alert-overdue' : 'dash-alert-due'}`}
             style={{ marginBottom: 'var(--sp-md)', cursor: 'pointer' }}
-            onClick={() => setView('wartung')}
+            onClick={() => setView('fahrzeuge')}
           >
             <div className="dash-alert-header">
               {overdue.length > 0

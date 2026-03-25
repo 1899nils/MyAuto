@@ -14,13 +14,14 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   // Trips
-  getTrips: (params?: { category?: TripCategory; from?: number; to?: number; limit?: number; offset?: number }) => {
+  getTrips: (params?: { category?: TripCategory; from?: number; to?: number; vehicle_id?: number; limit?: number; offset?: number }) => {
     const q = new URLSearchParams();
-    if (params?.category) q.set('category', params.category);
-    if (params?.from) q.set('from', String(params.from));
-    if (params?.to) q.set('to', String(params.to));
-    if (params?.limit) q.set('limit', String(params.limit));
-    if (params?.offset) q.set('offset', String(params.offset));
+    if (params?.category)   q.set('category', params.category);
+    if (params?.from)       q.set('from', String(params.from));
+    if (params?.to)         q.set('to', String(params.to));
+    if (params?.vehicle_id) q.set('vehicle_id', String(params.vehicle_id));
+    if (params?.limit)      q.set('limit', String(params.limit));
+    if (params?.offset)     q.set('offset', String(params.offset));
     return req<{ trips: Trip[]; total: number }>(`/trips?${q}`);
   },
 
@@ -38,7 +39,11 @@ export const api = {
     endLat?: number; endLng?: number;
     distanceKm?: number; durationSeconds?: number;
     category: TripCategory; notes?: string;
+    vehicleId?: number;
   }) => req<Trip>('/trips', { method: 'POST', body: JSON.stringify(data) }),
+
+  getMaintenanceByVehicle: (vehicleId: number) =>
+    req<{ entries: MaintenanceEntryRaw[] }>(`/maintenance?vehicle_id=${vehicleId}`),
 
   updateTrip: (id: number, data: Partial<{
     endTime: number; endLat: number; endLng: number; endAddress: string; startAddress: string;

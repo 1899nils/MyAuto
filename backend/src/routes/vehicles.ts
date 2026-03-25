@@ -37,7 +37,7 @@ const upload = multer({
 
 function rowToVehicle(row: Record<string, unknown>) {
   return {
-    id: row.id,
+    id: row.id as number,
     name: row.name,
     make: row.make,
     model: row.model,
@@ -52,6 +52,7 @@ function rowToVehicle(row: Record<string, unknown>) {
     notes: row.notes,
     photoPath: row.photo_path,
     isActive: row.is_active === 1,
+    odometerKm: row.odometer_km ?? null,
     createdAt: row.created_at,
   };
 }
@@ -59,7 +60,20 @@ function rowToVehicle(row: Record<string, unknown>) {
 // GET /api/vehicles
 router.get('/', (_req: Request, res: Response) => {
   const rows = db.prepare('SELECT * FROM vehicles ORDER BY created_at DESC').all() as Record<string, unknown>[];
-  res.json({ vehicles: rows.map(rowToVehicle) });
+  const vehicles = rows.map(row => {
+    const v = rowToVehicle(row);
+    const tripStats = db.prepare(
+      `SELECT COUNT(*) as count, SUM(distance_km) as km FROM trips WHERE vehicle_id = ? AND end_time IS NOT NULL`
+    ).get(v.id) as { count: number; km: number | null };
+    const maintCount = db.prepare(
+      `SELECT COUNT(*) as count FROM maintenance_entries WHERE vehicle_id = ?`
+    ).get(v.id) as { count: number };
+    const dueMaint = db.prepare(
+      `SELECT COUNT(*) as count FROM maintenance_entries WHERE vehicle_id = ? AND next_date IS NOT NULL AND next_date <= ?`
+    ).get(v.id, Date.now() + 30 * 24 * 60 * 60 * 1000) as { count: number };
+    return { ...v, tripCount: tripStats.count, totalKm: tripStats.km ?? 0, maintCount: maintCount.count, dueMaintCount: dueMaint.count };
+  });
+  res.json({ vehicles });
 });
 
 // GET /api/vehicles/:id
@@ -104,7 +118,7 @@ router.put('/:id', upload.single('photo'), (req: Request, res: Response) => {
   if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
 
   const { name, make, model, year, color, license_plate, vin, fuel_type, tank_capacity_liters,
-          insurance_company, insurance_number, notes, is_active } = req.body;
+          insurance_company, insurance_number, notes, is_active, odometer_km } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'name is required' });
@@ -112,7 +126,6 @@ router.put('/:id', upload.single('photo'), (req: Request, res: Response) => {
 
   let photoPath = existing.photo_path as string | null;
   if (req.file) {
-    // Delete old photo if exists
     if (photoPath) {
       const oldFile = path.join(UPLOADS_DIR, path.basename(photoPath));
       if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
@@ -123,7 +136,7 @@ router.put('/:id', upload.single('photo'), (req: Request, res: Response) => {
   db.prepare(`
     UPDATE vehicles SET name=?, make=?, model=?, year=?, color=?, license_plate=?, vin=?,
       fuel_type=?, tank_capacity_liters=?, insurance_company=?, insurance_number=?,
-      notes=?, photo_path=?, is_active=?
+      notes=?, photo_path=?, is_active=?, odometer_km=?
     WHERE id=?
   `).run(
     name,
@@ -134,6 +147,7 @@ router.put('/:id', upload.single('photo'), (req: Request, res: Response) => {
     insurance_company ?? null, insurance_number ?? null,
     notes ?? null, photoPath,
     is_active !== undefined ? (is_active ? 1 : 0) : (existing.is_active ?? 1),
+    odometer_km ? Number(odometer_km) : (existing.odometer_km ?? null),
     req.params.id
   );
 
