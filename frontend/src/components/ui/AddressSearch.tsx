@@ -29,16 +29,7 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
   const [open, setOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  // Load Maps JS + create geocoder once
-  useEffect(() => {
-    if (!settings?.googleMapsApiKey) return;
-    loadGoogleMaps(settings.googleMapsApiKey).then(() => {
-      geocoderRef.current = new google.maps.Geocoder();
-    });
-  }, [settings?.googleMapsApiKey]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -51,35 +42,43 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  async function runGeocode(text: string) {
+    const apiKey = settings?.googleMapsApiKey;
+    if (!apiKey) return;
+
+    setLoading(true);
+    try {
+      // Ensure Maps JS is loaded (creates google.maps.Geocoder)
+      await loadGoogleMaps(apiKey);
+      const geocoder = new google.maps.Geocoder();
+
+      geocoder.geocode({ address: text, region: 'de' }, (results, status) => {
+        setLoading(false);
+        if (status === google.maps.GeocoderStatus.OK && results?.length) {
+          const sugs = results.slice(0, 4).map(r => ({
+            address: r.formatted_address,
+            lat: r.geometry.location.lat(),
+            lng: r.geometry.location.lng(),
+          }));
+          setSuggestions(sugs);
+          setOpen(true);
+        } else {
+          setSuggestions([]);
+          setOpen(false);
+        }
+      });
+    } catch {
+      setLoading(false);
+    }
+  }
+
   function handleChange(v: string) {
     onChange(v);
     setConfirmed(false);
     setSuggestions([]);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!v.trim() || v.trim().length < 3) { setOpen(false); return; }
-
-    debounceRef.current = setTimeout(() => {
-      if (!geocoderRef.current) return;
-      setLoading(true);
-      geocoderRef.current.geocode(
-        { address: v, region: 'de' },
-        (results, status) => {
-          setLoading(false);
-          if (status === google.maps.GeocoderStatus.OK && results?.length) {
-            const sugs = results.slice(0, 4).map(r => ({
-              address: r.formatted_address,
-              lat: r.geometry.location.lat(),
-              lng: r.geometry.location.lng(),
-            }));
-            setSuggestions(sugs);
-            setOpen(true);
-          } else {
-            setSuggestions([]);
-            setOpen(false);
-          }
-        },
-      );
-    }, 600);
+    debounceRef.current = setTimeout(() => runGeocode(v), 600);
   }
 
   function handleSelect(s: Suggestion) {

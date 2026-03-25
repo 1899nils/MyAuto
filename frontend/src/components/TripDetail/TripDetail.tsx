@@ -18,6 +18,7 @@ export function TripDetail() {
   const [category, setCategory] = useState<TripCategory>('unclassified');
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [noRouteData, setNoRouteData] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
 
@@ -38,7 +39,16 @@ export function TripDetail() {
   }, [selectedTripId]);
 
   useEffect(() => {
+    setNoRouteData(false);
+  }, [trip?.id]);
+
+  useEffect(() => {
     if (!trip || !mapRef.current || !settings?.googleMapsApiKey) return;
+
+    // Don't bother loading the map if there's nothing to show
+    const hasData = trip.route_polyline || trip.start_lat || trip.end_lat
+      || trip.start_address || trip.end_address;
+    if (!hasData) { setNoRouteData(true); return; }
 
     mapInstanceRef.current = null;
 
@@ -135,6 +145,7 @@ export function TripDetail() {
       function tryCoordRoute() {
         const s = t.start_lat && t.start_lng ? { lat: t.start_lat, lng: t.start_lng } : null;
         const e = t.end_lat   && t.end_lng   ? { lat: t.end_lat,   lng: t.end_lng   } : null;
+        if (!s && !e) { setNoRouteData(true); return; }
         if (s) placeMarker(s, 'A', '#34C759');
         if (e) placeMarker(e, 'B', '#FF3B30');
         if (s && e) {
@@ -238,7 +249,7 @@ export function TripDetail() {
       </div>
 
       {/* ── Map ────────────────────────────────────── */}
-      {settings?.googleMapsApiKey ? (
+      {settings?.googleMapsApiKey && !noRouteData ? (
         <div className="trip-detail-map glass">
           <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: 'var(--r-lg)' }} />
         </div>
@@ -247,7 +258,9 @@ export function TripDetail() {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>🗺️</div>
             <p className="text-secondary" style={{ fontSize: 13 }}>
-              Google Maps API Key in Einstellungen hinterlegen
+              {!settings?.googleMapsApiKey
+                ? 'Google Maps API Key in Einstellungen hinterlegen'
+                : 'Keine Standortdaten für diese Fahrt'}
             </p>
           </div>
         </div>
