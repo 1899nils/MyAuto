@@ -78,3 +78,22 @@ export interface FuelStats {
   costPerKm: number | null;
   fillCount: number;
 }
+
+export interface Vehicle {
+  id: number;
+  name: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  color?: string;
+  licensePlate?: string;
+  vin?: string;
+  fuelType: 'gasoline' | 'diesel' | 'electric' | 'hybrid' | 'lpg';
+  tankCapacityLiters?: number;
+  insuranceCompany?: string;
+  insuranceNumber?: string;
+  notes?: string;
+  photoPath?: string;
+  isActive: boolean;
+  createdAt: number;
+}
