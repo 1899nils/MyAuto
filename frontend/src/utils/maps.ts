@@ -6,39 +6,47 @@ export function loadGoogleMaps(apiKey: string): Promise<void> {
   if (mapsLoading) return mapsLoading;
 
   mapsLoading = new Promise((resolve, reject) => {
-    // Script already in DOM (e.g. added but not yet ready)
     if (document.getElementById('google-maps-script')) {
-      if ((window as unknown as Record<string, unknown>)['google'] && (window as unknown as { google: { maps: unknown } }).google?.maps) {
-        mapsLoaded = true;
-        resolve();
-      } else {
-        const t = setInterval(() => {
-          if ((window as unknown as { google?: { maps?: unknown } }).google?.maps) {
-            clearInterval(t);
-            mapsLoaded = true;
-            resolve();
-          }
-        }, 50);
-        setTimeout(() => { clearInterval(t); reject(new Error('Maps timeout')); }, 15000);
-      }
+      // Script tag already exists – poll until google.maps is ready
+      const t = setInterval(() => {
+        if ((window as unknown as { google?: { maps?: unknown } }).google?.maps) {
+          clearInterval(t);
+          mapsLoaded = true;
+          resolve();
+        }
+      }, 50);
+      setTimeout(() => { clearInterval(t); reject(new Error('Maps timeout')); }, 10000);
       return;
     }
 
-    const callbackName = '__mapsReady';
-    (window as unknown as Record<string, unknown>)[callbackName] = () => {
+    let resolved = false;
+    function done() {
+      if (resolved) return;
+      resolved = true;
       mapsLoaded = true;
-      delete (window as unknown as Record<string, unknown>)[callbackName];
       resolve();
+    }
+
+    // Callback fires when Maps has fully initialised (preferred)
+    const cb = '__mapsReady';
+    (window as unknown as Record<string, unknown>)[cb] = () => {
+      delete (window as unknown as Record<string, unknown>)[cb];
+      done();
     };
 
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&callback=${cb}`;
     script.async = true;
+
+    // onload is a safety net: if callback isn't called (API key issue etc.)
+    // we resolve after a short grace period so the app doesn't freeze
+    script.onload = () => setTimeout(done, 300);
     script.onerror = () => {
       mapsLoading = null;
       reject(new Error('Google Maps failed to load'));
     };
+
     document.head.appendChild(script);
   });
 

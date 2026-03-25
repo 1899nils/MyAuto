@@ -28,6 +28,7 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [geoError, setGeoError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -47,8 +48,8 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
     if (!apiKey) return;
 
     setLoading(true);
+    setGeoError('');
     try {
-      // Ensure Maps JS is loaded (creates google.maps.Geocoder)
       await loadGoogleMaps(apiKey);
       const geocoder = new google.maps.Geocoder();
 
@@ -62,13 +63,20 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
           }));
           setSuggestions(sugs);
           setOpen(true);
+          setGeoError('');
+        } else if (status === google.maps.GeocoderStatus.ZERO_RESULTS) {
+          setSuggestions([]);
+          setOpen(false);
+          setGeoError('Keine Ergebnisse gefunden');
         } else {
           setSuggestions([]);
           setOpen(false);
+          setGeoError('Suche fehlgeschlagen – API-Key oder Abrechnung prüfen');
         }
       });
     } catch {
       setLoading(false);
+      setGeoError('Google Maps konnte nicht geladen werden');
     }
   }
 
@@ -76,6 +84,7 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
     onChange(v);
     setConfirmed(false);
     setSuggestions([]);
+    setGeoError('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!v.trim() || v.trim().length < 3) { setOpen(false); return; }
     debounceRef.current = setTimeout(() => runGeocode(v), 600);
@@ -110,6 +119,12 @@ export function AddressSearch({ value, onChange, onPlace, placeholder, required 
           {loading ? '⏳' : confirmed ? '📍' : ''}
         </span>
       </div>
+
+      {geoError && (
+        <p style={{ fontSize: 12, color: 'var(--red, #ff3b30)', marginTop: 4, marginBottom: 0 }}>
+          {geoError}
+        </p>
+      )}
 
       {open && suggestions.length > 0 && (
         <div style={{
