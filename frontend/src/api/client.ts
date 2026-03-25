@@ -1,4 +1,4 @@
-import { AppSettings, Trip, TrackPoint, TripCategory, TripStats, Vehicle, MaintenanceEntryRaw } from '../types';
+import { AppSettings, Trip, TrackPoint, TripCategory, TripStats, Vehicle, MaintenanceEntryRaw, YearStats } from '../types';
 
 const BASE = '/api';
 
@@ -52,6 +52,8 @@ export const api = {
 
   exportLogbookPdf: (year: number, category: 'business' | 'private' = 'business') =>
     window.open(`${BASE}/logbook/pdf?year=${year}&category=${category}`, '_blank'),
+
+  getYearStats: (year: number) => req<YearStats>(`/stats/year?year=${year}`),
 
   // Track Points
   addTrackPoints: (tripId: number, points: Omit<TrackPoint, 'id' | 'trip_id'>[]) =>

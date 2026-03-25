@@ -8,17 +8,19 @@ import { Settings } from './components/Settings/Settings';
 import { Spritmonitor } from './components/Spritmonitor/Spritmonitor';
 import { Garage } from './components/Garage/Garage';
 import { Wartung } from './components/Wartung/Wartung';
+import { Statistiken } from './components/Statistiken/Statistiken';
 import { ClassifyModal } from './components/ui/ClassifyModal';
 
-type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'garage' | 'wartung';
+type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'garage' | 'wartung' | 'statistiken';
 
 const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
-  { view: 'dashboard', icon: '🏠', label: 'Dashboard' },
-  { view: 'history',   icon: '🗺️', label: 'Fahrten'   },
-  { view: 'fuel',      icon: '⛽', label: 'Sprit'      },
-  { view: 'garage',    icon: '🚘', label: 'Garage'     },
-  { view: 'wartung',   icon: '🔧', label: 'Wartung'    },
-  { view: 'settings',  icon: '⚙️', label: 'Einstellungen' },
+  { view: 'dashboard',   icon: '🏠', label: 'Dashboard'    },
+  { view: 'history',     icon: '🗺️', label: 'Fahrten'      },
+  { view: 'statistiken', icon: '📊', label: 'Statistiken'  },
+  { view: 'fuel',        icon: '⛽', label: 'Sprit'         },
+  { view: 'garage',      icon: '🚘', label: 'Garage'        },
+  { view: 'wartung',     icon: '🔧', label: 'Wartung'       },
+  { view: 'settings',    icon: '⚙️', label: 'Einstellungen' },
 ];
 
 export default function App() {
@@ -39,6 +41,7 @@ export default function App() {
       case 'fuel': return <Spritmonitor />;
       case 'garage': return <Garage />;
       case 'wartung': return <Wartung />;
+      case 'statistiken': return <Statistiken />;
       default: return <Dashboard />;
     }
   }

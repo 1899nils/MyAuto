@@ -10,6 +10,7 @@ import fuelRouter from './routes/fuel';
 import vehiclesRouter from './routes/vehicles';
 import maintenanceRouter from './routes/maintenance';
 import logbookRouter from './routes/logbook';
+import statsRouter from './routes/stats';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,7 @@ app.use('/api/fuel', fuelRouter);
 app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/logbook', logbookRouter);
+app.use('/api/stats', statsRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, '../../frontend/dist');
