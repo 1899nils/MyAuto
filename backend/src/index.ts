@@ -11,6 +11,7 @@ import vehiclesRouter from './routes/vehicles';
 import maintenanceRouter from './routes/maintenance';
 import logbookRouter from './routes/logbook';
 import statsRouter from './routes/stats';
+import backupRouter from './routes/backup';
 import { runMigrations } from './db/migrations';
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/logbook', logbookRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/backup', backupRouter);
 
 // Serve frontend static files in production
 const frontendDist = path.join(__dirname, '../../frontend/dist');

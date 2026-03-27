@@ -27,16 +27,39 @@ function fromDateInput(v: string): number | null {
   return new Date(v).getTime();
 }
 
-function MaintBadge({ entry, now }: { entry: MaintenanceEntryRaw; now: number }) {
-  if (!entry.next_date) return null;
-  const overdue = entry.next_date < now;
-  const soon    = entry.next_date < now + 30 * 24 * 60 * 60 * 1000;
-  const color   = overdue ? 'var(--red)' : soon ? 'var(--orange)' : 'var(--text-secondary)';
-  return (
-    <span style={{ fontSize: 11, color, fontWeight: 600 }}>
-      {overdue ? '⚠️ überfällig' : soon ? '🔔 bald fällig' : '✓'}
-    </span>
-  );
+function MaintBadge({ entry, now, vehicleOdometer }: { entry: MaintenanceEntryRaw; now: number; vehicleOdometer?: number | null }) {
+  const badges: React.ReactNode[] = [];
+
+  if (entry.next_date) {
+    const overdue = entry.next_date < now;
+    const soon    = entry.next_date < now + 30 * 24 * 60 * 60 * 1000;
+    if (overdue || soon) {
+      const days = Math.round((entry.next_date - now) / (1000 * 60 * 60 * 24));
+      const color = overdue ? 'var(--red)' : 'var(--orange)';
+      badges.push(
+        <span key="date" style={{ fontSize: 11, color, fontWeight: 600 }}>
+          {overdue ? `⚠️ ${Math.abs(days)}d überfällig` : `🔔 in ${days}d fällig`}
+        </span>
+      );
+    }
+  }
+
+  if (entry.next_odometer_km != null && vehicleOdometer != null) {
+    const diff = entry.next_odometer_km - vehicleOdometer;
+    if (diff <= 500) {
+      const color = diff <= 0 ? 'var(--red)' : 'var(--orange)';
+      badges.push(
+        <span key="km" style={{ fontSize: 11, color, fontWeight: 600 }}>
+          {diff <= 0
+            ? `⚠️ ${Math.abs(Math.round(diff)).toLocaleString('de-DE')} km überfällig`
+            : `🔔 noch ${Math.round(diff).toLocaleString('de-DE')} km`}
+        </span>
+      );
+    }
+  }
+
+  if (badges.length === 0) return null;
+  return <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>{badges}</div>;
 }
 
 // ── empty form factories ──────────────────────────────────────────────────────
@@ -207,7 +230,7 @@ function MaintenanceList({ vehicle, now }: { vehicle: Vehicle; now: number }) {
                 {e.odometer_km && ` · ${e.odometer_km.toLocaleString('de-DE')} km`}
                 {e.cost && ` · ${e.cost.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}`}
               </div>
-              <MaintBadge entry={e} now={now} />
+              <MaintBadge entry={e} now={now} vehicleOdometer={vehicle.odometerKm} />
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(e)}>✏️</button>

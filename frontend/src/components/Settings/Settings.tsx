@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { ClassificationRule } from '../../types';
 
@@ -14,6 +14,9 @@ export function Settings() {
   const [rules, setRules] = useState<ClassificationRule[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) {
@@ -68,6 +71,29 @@ export function Settings() {
       ? rule.days.filter(d => d !== day)
       : [...rule.days, day].sort();
     updateRule(ruleIdx, { days });
+  }
+
+  async function handleRestore(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRestoring(true);
+    setRestoreMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('backup', file);
+      const res = await fetch('/api/backup/import', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        setRestoreMsg('✓ ' + data.message);
+      } else {
+        setRestoreMsg('⚠️ ' + (data.error || 'Fehler beim Einspielen'));
+      }
+    } catch {
+      setRestoreMsg('⚠️ Netzwerkfehler');
+    } finally {
+      setRestoring(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   }
 
   async function handleUnpairBluetooth() {
@@ -260,6 +286,43 @@ export function Settings() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Backup & Restore */}
+      <div className="glass card mb-md">
+        <div className="card-title">Backup & Wiederherstellung</div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 'var(--sp-md)' }}>
+          Exportiert alle Fahrten, Einstellungen, Fahrzeugdaten und Fotos als ZIP-Datei.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-sm)' }}>
+          <a
+            href="/api/backup/export"
+            download
+            className="btn btn-primary btn-sm"
+            style={{ textAlign: 'center', textDecoration: 'none' }}
+          >
+            ⬇ Backup herunterladen
+          </a>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => fileRef.current?.click()}
+            disabled={restoring}
+          >
+            {restoring ? '⏳ Wird eingespielt…' : '⬆ Backup einspielen'}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".zip"
+            style={{ display: 'none' }}
+            onChange={handleRestore}
+          />
+          {restoreMsg && (
+            <p style={{ fontSize: 13, color: restoreMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)', marginTop: 4 }}>
+              {restoreMsg}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Save button */}

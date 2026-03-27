@@ -107,6 +107,9 @@ export interface MaintenanceEntryRaw {
   next_date: number | null;
   next_odometer_km: number | null;
   created_at: number;
+  // Joined fields from /due endpoint
+  vehicle_name?: string;
+  vehicle_odometer?: number | null;
 }
 
 export interface MonthDataPoint {

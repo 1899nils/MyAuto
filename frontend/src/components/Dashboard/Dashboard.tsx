@@ -137,8 +137,11 @@ export function Dashboard() {
 
       {/* Maintenance alerts */}
       {dueEntries.length > 0 && (() => {
-        const overdue = dueEntries.filter(e => e.next_date != null && e.next_date < dueNow);
-        const upcoming = dueEntries.filter(e => e.next_date != null && e.next_date >= dueNow);
+        const overdue = dueEntries.filter(e => {
+          const dateOverdue = e.next_date != null && e.next_date < dueNow;
+          const kmOverdue = e.next_odometer_km != null && e.vehicle_odometer != null && e.next_odometer_km <= e.vehicle_odometer;
+          return dateOverdue || kmOverdue;
+        });
         const preview = dueEntries.slice(0, 3);
         return (
           <div
@@ -156,14 +159,26 @@ export function Dashboard() {
             <div className="dash-alert-items">
               {preview.map(e => {
                 const days = e.next_date != null ? Math.round((e.next_date - dueNow) / (1000 * 60 * 60 * 24)) : null;
+                const kmDiff = e.next_odometer_km != null && e.vehicle_odometer != null
+                  ? Math.round(e.next_odometer_km - e.vehicle_odometer) : null;
                 return (
                   <div key={e.id} className="dash-alert-item">
-                    <span className="dash-alert-item-title">{e.title}</span>
-                    {days != null && (
-                      <span className={`dash-days-chip ${days < 0 ? 'chip-overdue' : 'chip-due'}`}>
-                        {days < 0 ? `${Math.abs(days)}d überfällig` : days === 0 ? 'Heute' : `in ${days}d`}
-                      </span>
-                    )}
+                    <span className="dash-alert-item-title">
+                      {e.title}
+                      {e.vehicle_name ? <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · {e.vehicle_name}</span> : null}
+                    </span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {days != null && (
+                        <span className={`dash-days-chip ${days < 0 ? 'chip-overdue' : 'chip-due'}`}>
+                          {days < 0 ? `${Math.abs(days)}d überfällig` : days === 0 ? 'Heute' : `in ${days}d`}
+                        </span>
+                      )}
+                      {kmDiff != null && days == null && (
+                        <span className={`dash-days-chip ${kmDiff <= 0 ? 'chip-overdue' : 'chip-due'}`}>
+                          {kmDiff <= 0 ? `${Math.abs(kmDiff).toLocaleString('de-DE')} km überfällig` : `noch ${kmDiff.toLocaleString('de-DE')} km`}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
