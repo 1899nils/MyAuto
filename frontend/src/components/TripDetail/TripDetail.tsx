@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Trip, TripCategory, Vehicle } from '../../types';
 import { formatDate, formatTime, formatKm, formatDuration, categoryLabel, categoryEmoji } from '../../utils/format';
 import { loadGoogleMaps, createPolyline } from '../../utils/maps';
+import { resolveAddress } from '../../utils/addressUtils';
 
 // Small helper to update a trip silently (fire-and-forget, no store re-render needed here)
 async function patchTrip(id: number, data: Parameters<typeof api.updateTrip>[1]) {
@@ -362,14 +363,14 @@ export function TripDetail() {
               <div className="trip-detail-row">
                 <span className="trip-detail-row-icon" style={{ color: 'var(--green)' }}>●</span>
                 <span className="trip-detail-row-text">
-                  {trip.start_address?.split(',')[0] || (trip.start_lat ? `${trip.start_lat.toFixed(4)}, ${trip.start_lng?.toFixed(4)}` : 'Unbekannt')}
+                  {trip.start_address ? resolveAddress(trip.start_address, settings?.addressAliases) : (trip.start_lat ? `${trip.start_lat.toFixed(4)}, ${trip.start_lng?.toFixed(4)}` : 'Unbekannt')}
                 </span>
               </div>
               <div className="trip-detail-route-line" />
               <div className="trip-detail-row">
                 <span className="trip-detail-row-icon" style={{ color: 'var(--red)' }}>●</span>
                 <span className="trip-detail-row-text">
-                  {trip.end_address?.split(',')[0] || (trip.end_lat ? `${trip.end_lat.toFixed(4)}, ${trip.end_lng?.toFixed(4)}` : 'Unbekannt')}
+                  {trip.end_address ? resolveAddress(trip.end_address, settings?.addressAliases) : (trip.end_lat ? `${trip.end_lat.toFixed(4)}, ${trip.end_lng?.toFixed(4)}` : 'Unbekannt')}
                 </span>
               </div>
             </>

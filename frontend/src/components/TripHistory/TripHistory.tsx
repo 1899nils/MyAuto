@@ -7,6 +7,7 @@ import {
 } from '../../utils/format';
 import { api } from '../../api/client';
 import { AddressSearch, PlaceResult } from '../ui/AddressSearch';
+import { resolveAddress } from '../../utils/addressUtils';
 
 // ---- helpers for inline add-form ----
 function toDatetimeLocal(ts: number): string {
@@ -47,8 +48,9 @@ export function TripHistory() {
   const {
     trips, totalTrips, loadTrips, deleteTrip, setView,
     isTracking, activeTrip, trackPoints, endTrip, loadStats,
-    addManualTrip,
+    addManualTrip, settings,
   } = useTripStore();
+  const aliases = settings?.addressAliases ?? {};
 
   const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
@@ -463,7 +465,7 @@ export function TripHistory() {
               <div className="list-item-body">
                 <div className="list-item-title">
                   {trip.start_address
-                    ? `${trip.start_address.split(',')[0]}${trip.end_address ? ` → ${trip.end_address.split(',')[0]}` : ''}`
+                    ? `${resolveAddress(trip.start_address, aliases)}${trip.end_address ? ` → ${resolveAddress(trip.end_address, aliases)}` : ''}`
                     : `Fahrt am ${formatDate(trip.start_time)}`}
                 </div>
                 <div className="list-item-sub">

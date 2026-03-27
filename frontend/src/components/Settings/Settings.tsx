@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { ClassificationRule } from '../../types';
 import { api, clearToken, setToken } from '../../api/client';
+import { useTheme, type Theme } from '../../hooks/useTheme';
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -22,6 +23,11 @@ export function Settings() {
   const [newPin, setNewPin] = useState('');
   const [currentPin, setCurrentPin] = useState('');
   const [pinMsg, setPinMsg] = useState('');
+  const { theme, setTheme } = useTheme();
+  // Address aliases
+  const [aliases, setAliases] = useState<Record<string, string>>({});
+  const [aliasAddr, setAliasAddr] = useState('');
+  const [aliasName, setAliasName] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -30,6 +36,7 @@ export function Settings() {
       setWorkAddress(settings.workAddress || '');
       setDefaultCategory(settings.defaultCategory || 'ask');
       setRules(settings.classificationRules || []);
+      setAliases(settings.addressAliases ?? {});
     }
   }, [settings]);
 
@@ -50,6 +57,19 @@ export function Settings() {
     }
   }
 
+  function addAlias() {
+    const addr = aliasAddr.trim();
+    const name = aliasName.trim();
+    if (!addr || !name) return;
+    setAliases(a => ({ ...a, [addr]: name }));
+    setAliasAddr('');
+    setAliasName('');
+  }
+
+  function removeAlias(addr: string) {
+    setAliases(a => { const n = { ...a }; delete n[addr]; return n; });
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -59,6 +79,7 @@ export function Settings() {
         workAddress,
         defaultCategory,
         classificationRules: rules,
+        addressAliases: aliases,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -371,6 +392,43 @@ export function Settings() {
             </button>
           )}
           {pinMsg && <p style={{ fontSize: 13, color: pinMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)' }}>{pinMsg}</p>}
+        </div>
+      </div>
+
+      {/* Adress-Aliase */}
+      <div className="glass card mb-md">
+        <div className="card-title">📍 Adress-Aliase</div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 'var(--sp-md)' }}>
+          Vergib kurze Namen für häufige Adressen – sie erscheinen statt der langen Adresse überall in der App.
+        </p>
+        {Object.keys(aliases).length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 'var(--sp-md)' }}>
+            {Object.entries(aliases).map(([addr, name]) => (
+              <div key={addr} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)', border: '1px solid var(--separator)' }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{name}</span>
+                <span style={{ flex: 2, fontSize: 12, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{addr}</span>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', fontSize: 16, padding: 0 }} onClick={() => removeAlias(addr)}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-sm)' }}>
+          <input className="form-input" placeholder="Volle Adresse (z.B. Hauptstraße 1, 12345 Berlin)" value={aliasAddr} onChange={e => setAliasAddr(e.target.value)} />
+          <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
+            <input className="form-input" style={{ flex: 1 }} placeholder="Kurzname (z.B. 🏠 Zuhause)" value={aliasName} onChange={e => setAliasName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addAlias()} />
+            <button className="btn btn-ghost btn-sm" onClick={addAlias} disabled={!aliasAddr.trim() || !aliasName.trim()}>Hinzufügen</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Design & Theme */}
+      <div className="glass card mb-md">
+        <div className="card-title">🎨 Design</div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 'var(--sp-md)' }}>Farbschema der App</p>
+        <div className="toggle-group">
+          {([['system', '🖥 System'], ['dark', '🌙 Dunkel'], ['light', '☀️ Hell']] as [Theme, string][]).map(([val, label]) => (
+            <button key={val} className={`toggle-btn ${theme === val ? 'active' : ''}`} onClick={() => setTheme(val)}>{label}</button>
+          ))}
         </div>
       </div>
 
