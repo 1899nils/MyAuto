@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { TripCategory } from '../../types';
 import { formatDate, formatDuration, formatKm } from '../../utils/format';
+import { resolveAddress } from '../../utils/addressUtils';
 
 export function ClassifyModal() {
-  const { classifyModalTrip, setClassifyModal, updateTrip } = useTripStore();
+  const { classifyModalTrip, setClassifyModal, updateTrip, settings } = useTripStore();
   const [saving, setSaving] = useState(false);
 
   if (!classifyModalTrip) return null;
@@ -33,7 +34,7 @@ export function ClassifyModal() {
           </p>
           {trip.end_address && (
             <p style={{ fontSize: 14, marginTop: -8 }}>
-              → {trip.end_address}
+              → {resolveAddress(trip.end_address, settings?.addressAliases)}
             </p>
           )}
         </div>

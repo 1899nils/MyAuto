@@ -4,6 +4,7 @@ import { useBluetooth } from '../../hooks/useBluetooth';
 import { formatDate, formatTime, formatKm, formatDuration, liveElapsed, categoryLabel, categoryEmoji } from '../../utils/format';
 import { Trip, MaintenanceEntryRaw, YearStats } from '../../types';
 import { api } from '../../api/client';
+import { resolveAddress } from '../../utils/addressUtils';
 
 export function Dashboard() {
   const { stats, trips, settings, activeTrip, isTracking, loadStats, loadTrips, startTrip, endTrip, trackPoints, setView } = useTripStore();
@@ -282,7 +283,7 @@ export function Dashboard() {
               <div className="list-item-body">
                 <div className="list-item-title">
                   {trip.start_address
-                    ? `${trip.start_address.split(',')[0]} → ${trip.end_address?.split(',')[0] ?? '…'}`
+                    ? `${resolveAddress(trip.start_address, settings?.addressAliases)} → ${resolveAddress(trip.end_address, settings?.addressAliases)}`
                     : formatDate(trip.start_time)}
                 </div>
                 <div className="list-item-sub">

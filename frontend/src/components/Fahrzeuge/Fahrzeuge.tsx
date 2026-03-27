@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client';
 import { Vehicle, MaintenanceEntryRaw, Trip, FuelEntry } from '../../types';
+import { useTripStore } from '../../store/tripStore';
+import { resolveAddress } from '../../utils/addressUtils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -257,6 +259,8 @@ function MaintenanceList({ vehicle, now }: { vehicle: Vehicle; now: number }) {
 function VehicleTripList({ vehicleId }: { vehicleId: number }) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const { settings } = useTripStore();
+  const aliases = settings?.addressAliases ?? {};
 
   useEffect(() => {
     api.getTrips({ vehicle_id: vehicleId, limit: 20 })
@@ -279,8 +283,8 @@ function VehicleTripList({ vehicleId }: { vehicleId: number }) {
           <span style={{ fontSize: 16 }}>{CAT[t.category] ?? '❓'}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {t.start_address?.split(',')[0] ?? new Date(t.start_time).toLocaleDateString('de-DE')}
-              {t.end_address ? ` → ${t.end_address.split(',')[0]}` : ''}
+              {t.start_address ? resolveAddress(t.start_address, aliases) : new Date(t.start_time).toLocaleDateString('de-DE')}
+              {t.end_address ? ` → ${resolveAddress(t.end_address, aliases)}` : ''}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
               {new Date(t.start_time).toLocaleDateString('de-DE')}

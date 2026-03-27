@@ -50,6 +50,7 @@ export interface AppSettings {
   workAddress?: string;
   defaultCategory: 'private' | 'business' | 'ask';
   classificationRules: ClassificationRule[];
+  addressAliases?: Record<string, string>;
 }
 
 export interface TripStats {

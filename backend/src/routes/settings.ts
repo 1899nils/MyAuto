@@ -23,6 +23,9 @@ router.get('/', (_req: Request, res: Response) => {
   const rules = db.prepare('SELECT * FROM classification_rules ORDER BY priority DESC').all() as (ClassificationRule & { id: number; days: string })[];
   const parsedRules = rules.map(r => ({ ...r, days: JSON.parse(r.days) }));
 
+  let addressAliases: Record<string, string> = {};
+  try { addressAliases = JSON.parse(settingsMap.address_aliases || '{}'); } catch { /* ignore */ }
+
   res.json({
     bluetoothDeviceName: settingsMap.bluetoothDeviceName || null,
     bluetoothDeviceId: settingsMap.bluetoothDeviceId || null,
@@ -31,6 +34,7 @@ router.get('/', (_req: Request, res: Response) => {
     workAddress: settingsMap.workAddress || '',
     defaultCategory: settingsMap.defaultCategory || 'ask',
     classificationRules: parsedRules,
+    addressAliases,
   });
 });
 
@@ -38,7 +42,8 @@ router.get('/', (_req: Request, res: Response) => {
 router.put('/', (req: Request, res: Response) => {
   const {
     bluetoothDeviceName, bluetoothDeviceId, googleMapsApiKey,
-    homeAddress, workAddress, defaultCategory, classificationRules
+    homeAddress, workAddress, defaultCategory, classificationRules,
+    addressAliases,
   } = req.body;
 
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
@@ -49,6 +54,7 @@ router.put('/', (req: Request, res: Response) => {
     if (homeAddress !== undefined) upsert.run('homeAddress', homeAddress);
     if (workAddress !== undefined) upsert.run('workAddress', workAddress);
     if (defaultCategory !== undefined) upsert.run('defaultCategory', defaultCategory);
+    if (addressAliases !== undefined) upsert.run('address_aliases', JSON.stringify(addressAliases));
 
     if (Array.isArray(classificationRules)) {
       db.prepare('DELETE FROM classification_rules').run();
