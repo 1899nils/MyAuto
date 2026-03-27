@@ -87,14 +87,14 @@ router.get('/stats', (req: Request, res: Response) => {
 
 // POST /api/fuel
 router.post('/', (req: Request, res: Response) => {
-  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id } = req.body;
+  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type } = req.body;
   if (!date || !liters || !price_per_liter || !total_cost) {
     return res.status(400).json({ error: 'date, liters, price_per_liter, total_cost required' });
   }
   const result = db.prepare(
-    `INSERT INTO fuel_entries (date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null);
+    `INSERT INTO fuel_entries (date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, fuel_type ?? 'super');
   const entry = db.prepare(`
     SELECT fe.*, v.name AS vehicle_name FROM fuel_entries fe
     LEFT JOIN vehicles v ON fe.vehicle_id = v.id WHERE fe.id = ?
@@ -104,11 +104,11 @@ router.post('/', (req: Request, res: Response) => {
 
 // PUT /api/fuel/:id
 router.put('/:id', (req: Request, res: Response) => {
-  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id } = req.body;
+  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type } = req.body;
   db.prepare(
-    `UPDATE fuel_entries SET date=?, liters=?, price_per_liter=?, total_cost=?, odometer_km=?, notes=?, vehicle_id=?
+    `UPDATE fuel_entries SET date=?, liters=?, price_per_liter=?, total_cost=?, odometer_km=?, notes=?, vehicle_id=?, fuel_type=?
      WHERE id=?`
-  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, req.params.id);
+  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, fuel_type ?? 'super', req.params.id);
   const entry = db.prepare(`
     SELECT fe.*, v.name AS vehicle_name FROM fuel_entries fe
     LEFT JOIN vehicles v ON fe.vehicle_id = v.id WHERE fe.id = ?

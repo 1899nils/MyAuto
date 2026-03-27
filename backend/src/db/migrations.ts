@@ -24,6 +24,11 @@ export function runMigrations() {
     db.exec('ALTER TABLE fuel_entries ADD COLUMN vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE SET NULL');
   }
 
+  // v3: fuel type per fill-up
+  if (!hasColumn('fuel_entries', 'fuel_type')) {
+    db.exec("ALTER TABLE fuel_entries ADD COLUMN fuel_type TEXT DEFAULT 'super'");
+  }
+
   // Index for new columns
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_trips_vehicle_id ON trips(vehicle_id);

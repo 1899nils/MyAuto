@@ -6,14 +6,32 @@ const BASE = '/api';
 
 const TOKEN_KEY = 'myauto_token';
 
+function setCookie(name: string, value: string, days = 365) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+}
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+function deleteCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict`;
+}
+
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  try {
+    const ls = localStorage.getItem(TOKEN_KEY);
+    if (ls) return ls;
+  } catch { /* localStorage blocked (private mode, etc.) */ }
+  return getCookie(TOKEN_KEY);
 }
 export function setToken(t: string) {
-  localStorage.setItem(TOKEN_KEY, t);
+  try { localStorage.setItem(TOKEN_KEY, t); } catch { /* blocked */ }
+  setCookie(TOKEN_KEY, t);
 }
 export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
+  try { localStorage.removeItem(TOKEN_KEY); } catch { /* blocked */ }
+  deleteCookie(TOKEN_KEY);
 }
 
 // Called when any API request returns 401
