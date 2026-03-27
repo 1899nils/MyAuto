@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { useBluetooth } from '../../hooks/useBluetooth';
 import { formatDate, formatTime, formatKm, formatDuration, liveElapsed, categoryLabel, categoryEmoji } from '../../utils/format';
-import { Trip, MaintenanceEntryRaw } from '../../types';
+import { Trip, MaintenanceEntryRaw, YearStats } from '../../types';
 import { api } from '../../api/client';
 
 export function Dashboard() {
@@ -14,6 +14,7 @@ export function Dashboard() {
   const [btError, setBtError] = useState('');
   const [dueEntries, setDueEntries] = useState<MaintenanceEntryRaw[]>([]);
   const [dueNow, setDueNow] = useState<number>(Date.now());
+  const [yearStats, setYearStats] = useState<YearStats | null>(null);
 
   useEffect(() => {
     loadStats();
@@ -22,6 +23,7 @@ export function Dashboard() {
       setDueEntries(data.entries as MaintenanceEntryRaw[]);
       setDueNow(data.now);
     }).catch(() => {/* ignore */});
+    api.getYearStats(new Date().getFullYear()).then(setYearStats).catch(() => {/* ignore */});
   }, []);
 
   useEffect(() => {
@@ -225,6 +227,36 @@ export function Dashboard() {
           <div className="flex-between" style={{ fontSize: 14 }}>
             <span>🏠 Privat</span>
             <span style={{ fontWeight: 600 }}>{formatKm(monthPrivate?.km ?? 0)} ({100 - businessPct}%)</span>
+          </div>
+        </div>
+      )}
+
+      {/* Year costs & tax quick-view */}
+      {yearStats && (yearStats.costs.total_eur > 0 || yearStats.tax.business_km > 0) && (
+        <div className="glass card" style={{ marginBottom: 'var(--sp-md)', cursor: 'pointer' }} onClick={() => setView('statistiken')}>
+          <div className="card-title" style={{ marginBottom: 'var(--sp-sm)' }}>
+            💰 {new Date().getFullYear()} im Überblick
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', float: 'right', fontWeight: 400 }}>Details →</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--sp-sm)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>
+                {yearStats.costs.total_eur.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Kosten gesamt</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#007AFF' }}>
+                {yearStats.tax.pauschale.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Steuer-Pauschale</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#34C759' }}>
+                {(yearStats.costs.co2_kg ?? 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })} kg
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>CO₂</div>
+            </div>
           </div>
         </div>
       )}

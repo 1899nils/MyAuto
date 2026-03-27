@@ -158,6 +158,7 @@ export function Statistiken() {
                   { label: `⛽ Sprit (${data.costs.fuel_liters.toFixed(1)} L)`, value: fmtEur(data.costs.fuel_eur) },
                   { label: `🔧 Wartung (${data.costs.maintenance_count}x)`,      value: fmtEur(data.costs.maintenance_eur) },
                   { label: 'Gesamt',                                               value: fmtEur(data.costs.total_eur), bold: true },
+                  { label: `🌿 CO₂ (${data.costs.fuel_liters.toFixed(0)} L)`,    value: `${(data.costs.co2_kg ?? 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })} kg` },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{row.label}</span>

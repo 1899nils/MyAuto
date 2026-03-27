@@ -2,17 +2,50 @@ import { AppSettings, Trip, TrackPoint, TripCategory, TripStats, Vehicle, Mainte
 
 const BASE = '/api';
 
+// ── Auth token helpers ────────────────────────────────────────────────────────
+
+const TOKEN_KEY = 'myauto_token';
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function setToken(t: string) {
+  localStorage.setItem(TOKEN_KEY, t);
+}
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+// Called when any API request returns 401
+let _onUnauthorized: (() => void) | null = null;
+export function onUnauthorized(cb: () => void) { _onUnauthorized = cb; }
+
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  const token = getToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, { headers, ...options });
+  if (res.status === 401) {
+    clearToken();
+    _onUnauthorized?.();
+    throw new Error('Unauthorized');
+  }
   if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
   if (res.status === 204) return undefined as T;
   return res.json();
 }
 
 export const api = {
+  // Auth
+  getAuthStatus: () => fetch(`${BASE}/auth/status`).then(r => r.json()) as Promise<{ pinSet: boolean }>,
+  authLogin: (pin: string) => fetch(`${BASE}/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }),
+  }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); return r.json() as Promise<{ token: string }>; }),
+  authSetup: (pin: string, currentPin?: string) => fetch(`${BASE}/auth/setup`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin, currentPin }),
+  }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); return r.json() as Promise<{ token: string }>; }),
+
   // Trips
   getTrips: (params?: { category?: TripCategory; from?: number; to?: number; vehicle_id?: number; limit?: number; offset?: number }) => {
     const q = new URLSearchParams();

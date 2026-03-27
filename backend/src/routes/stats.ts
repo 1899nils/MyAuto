@@ -72,6 +72,24 @@ router.get('/year', (req: Request, res: Response) => {
     WHERE date >= ? AND date < ?
   `).get(yearStart, yearEnd) as { cost: number | null; count: number };
 
+  // CO₂ estimate: join fuel_entries with vehicles for fuel_type
+  // Emission factors kg CO₂ per liter: gasoline 2.31, diesel 2.64, lpg 1.63, electric 0, hybrid 2.0
+  interface FuelCO2Row { liters: number; fuel_type: string | null }
+  const fuelCO2Rows = db.prepare(`
+    SELECT fe.liters, v.fuel_type
+    FROM fuel_entries fe
+    LEFT JOIN vehicles v ON fe.vehicle_id = v.id
+    WHERE fe.date >= ? AND fe.date < ?
+  `).all(yearStart, yearEnd) as FuelCO2Row[];
+
+  const CO2_FACTORS: Record<string, number> = {
+    gasoline: 2.31, diesel: 2.64, lpg: 1.63, electric: 0, hybrid: 2.0,
+  };
+  const co2_kg = fuelCO2Rows.reduce((sum, row) => {
+    const factor = CO2_FACTORS[row.fuel_type ?? 'gasoline'] ?? 2.31;
+    return sum + (row.liters ?? 0) * factor;
+  }, 0);
+
   const MONTH_LABELS = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   const monthData = MONTH_LABELS.map((label, i) => {
     const m = String(i + 1).padStart(2, '0');
@@ -109,6 +127,7 @@ router.get('/year', (req: Request, res: Response) => {
       maintenance_eur: Math.round((maintCost?.cost ?? 0) * 100) / 100,
       maintenance_count: maintCost?.count ?? 0,
       total_eur: Math.round(((fuelCost?.cost ?? 0) + (maintCost?.cost ?? 0)) * 100) / 100,
+      co2_kg: Math.round(co2_kg * 10) / 10,
     },
     tax: {
       business_km: Math.round(businessKm * 10) / 10,

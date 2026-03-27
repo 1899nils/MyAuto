@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { ClassificationRule } from '../../types';
+import { api, clearToken, setToken } from '../../api/client';
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -17,6 +18,10 @@ export function Settings() {
   const [restoring, setRestoring] = useState(false);
   const [restoreMsg, setRestoreMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pinState, setPinState] = useState<{ pinSet: boolean } | null>(null);
+  const [newPin, setNewPin] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
+  const [pinMsg, setPinMsg] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -27,6 +32,23 @@ export function Settings() {
       setRules(settings.classificationRules || []);
     }
   }, [settings]);
+
+  useEffect(() => {
+    api.getAuthStatus().then(setPinState).catch(() => {});
+  }, []);
+
+  async function handlePinSave() {
+    setPinMsg('');
+    try {
+      const { token } = await api.authSetup(newPin, pinState?.pinSet ? currentPin : undefined);
+      setToken(token);
+      setPinState({ pinSet: true });
+      setNewPin(''); setCurrentPin('');
+      setPinMsg('✓ PIN gespeichert');
+    } catch (e: unknown) {
+      setPinMsg(e instanceof Error ? e.message : 'Fehler');
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -322,6 +344,33 @@ export function Settings() {
               {restoreMsg}
             </p>
           )}
+        </div>
+      </div>
+
+      {/* PIN & Sicherheit */}
+      <div className="glass card mb-md">
+        <div className="card-title">🔒 Zugangscode (PIN)</div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 'var(--sp-md)' }}>
+          {pinState?.pinSet
+            ? 'PIN ist aktiv. Hier kannst du ihn ändern.'
+            : 'Kein PIN gesetzt – alle Benutzer haben Zugriff. Setze einen PIN, um die App zu schützen.'}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-sm)' }}>
+          {pinState?.pinSet && (
+            <input className="form-input" type="password" inputMode="numeric" placeholder="Aktueller PIN"
+              value={currentPin} onChange={e => setCurrentPin(e.target.value)} />
+          )}
+          <input className="form-input" type="password" inputMode="numeric" placeholder="Neuer PIN (mind. 4 Stellen)"
+            value={newPin} onChange={e => setNewPin(e.target.value)} />
+          <button className="btn btn-primary btn-sm" onClick={handlePinSave} disabled={newPin.length < 4}>
+            {pinState?.pinSet ? '🔑 PIN ändern' : '🔒 PIN einrichten'}
+          </button>
+          {pinState?.pinSet && (
+            <button className="btn btn-ghost btn-sm" onClick={() => { clearToken(); window.location.reload(); }}>
+              🚪 Abmelden
+            </button>
+          )}
+          {pinMsg && <p style={{ fontSize: 13, color: pinMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)' }}>{pinMsg}</p>}
         </div>
       </div>
 
