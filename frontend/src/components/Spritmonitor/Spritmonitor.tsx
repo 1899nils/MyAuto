@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useFuelStore } from '../../store/fuelStore';
-import type { FuelEntry } from '../../types';
+import { api } from '../../api/client';
+import type { FuelEntry, Vehicle } from '../../types';
 
 type ComputedField = 'liters' | 'pricePerLiter' | 'totalCost';
 
@@ -27,7 +28,7 @@ function fmtDate(ts: number) {
   return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const emptyForm = () => ({
+const emptyForm = (vehicleId?: number) => ({
   date: toInputDate(Date.now()),
   liters: '',
   pricePerLiter: '',
@@ -35,6 +36,7 @@ const emptyForm = () => ({
   odometer: '',
   notes: '',
   computed: 'totalCost' as ComputedField,
+  vehicleId: vehicleId ?? undefined as number | undefined,
 });
 
 export function Spritmonitor() {
@@ -43,6 +45,8 @@ export function Spritmonitor() {
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
+  const [vehicleFilter, setVehicleFilter] = useState<number | undefined>(undefined);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const [showForm, setShowForm]         = useState(false);
   const [editId, setEditId]             = useState<number | null>(null);
@@ -51,9 +55,13 @@ export function Spritmonitor() {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   useEffect(() => {
-    loadEntries(year, month);
+    api.getVehicles().then(r => setVehicles(r.vehicles)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadEntries(year, month, vehicleFilter);
     loadStats(year);
-  }, [year, month]);
+  }, [year, month, vehicleFilter]);
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -86,7 +94,7 @@ export function Spritmonitor() {
   }
 
   function openAdd() {
-    setForm(emptyForm());
+    setForm(emptyForm(vehicleFilter));
     setEditId(null);
     setShowForm(true);
   }
@@ -100,6 +108,7 @@ export function Spritmonitor() {
       odometer: entry.odometer_km != null ? String(entry.odometer_km) : '',
       notes: entry.notes ?? '',
       computed: 'totalCost',
+      vehicleId: entry.vehicle_id ?? undefined,
     });
     setEditId(entry.id);
     setShowForm(true);
@@ -120,6 +129,7 @@ export function Spritmonitor() {
       total_cost: t,
       odometer_km: form.odometer ? parseFloat(form.odometer) : null,
       notes: form.notes || null,
+      vehicle_id: form.vehicleId ?? null,
     };
 
     if (editId != null) {
@@ -160,6 +170,17 @@ export function Spritmonitor() {
           <p className="page-subtitle">Tankverlauf & Kosten</p>
         </div>
         <div className="page-actions">
+          {vehicles.length > 0 && (
+            <select
+              className="form-input"
+              style={{ width: 'auto', fontSize: 13 }}
+              value={vehicleFilter ?? ''}
+              onChange={e => setVehicleFilter(e.target.value ? Number(e.target.value) : undefined)}
+            >
+              <option value="">🚗 Alle Fahrzeuge</option>
+              {vehicles.map(v => <option key={v.id} value={v.id}>{v.name as string}</option>)}
+            </select>
+          )}
           <button className="btn btn-primary btn-sm" onClick={openAdd}>+ Tanken</button>
         </div>
       </div>
@@ -252,15 +273,30 @@ export function Spritmonitor() {
         <div className="glass inline-form">
           <h3 className="inline-form-title">{editId != null ? 'Eintrag bearbeiten' : 'Neuer Tankstopp'}</h3>
           <form onSubmit={handleSave}>
-            <div className="form-group">
-              <label className="form-label">Datum</label>
-              <input
-                type="date"
-                className="form-input"
-                value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                required
-              />
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Datum</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={form.date}
+                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                  required
+                />
+              </div>
+              {vehicles.length > 0 && (
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Fahrzeug</label>
+                  <select
+                    className="form-input"
+                    value={form.vehicleId ?? ''}
+                    onChange={e => setForm(f => ({ ...f, vehicleId: e.target.value ? Number(e.target.value) : undefined }))}
+                  >
+                    <option value="">– kein Fahrzeug –</option>
+                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.name as string}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Bidirectional calculation row */}
@@ -385,8 +421,10 @@ export function Spritmonitor() {
                       </span></>
                     )}
                   </div>
-                  {(entry.notes || entry.odometer_km != null) && (
+                  {(entry.notes || entry.odometer_km != null || entry.vehicle_name) && (
                     <div className="list-item-tag">
+                      {entry.vehicle_name && <span>🚗 {entry.vehicle_name}</span>}
+                      {entry.vehicle_name && (entry.odometer_km != null || entry.notes) && ' · '}
                       {entry.odometer_km != null && `${entry.odometer_km.toLocaleString('de-DE')} km`}
                       {entry.odometer_km != null && entry.notes && ' · '}
                       {entry.notes}

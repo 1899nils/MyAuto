@@ -15,25 +15,35 @@ function yearBounds(year: number) {
   return { start, end };
 }
 
-// GET /api/fuel?year=2026&month=3   (month optional, 1-based)
+// GET /api/fuel?year=2026&month=3&vehicle_id=1   (month + vehicle_id optional)
 router.get('/', (req: Request, res: Response) => {
-  const year  = req.query.year  ? Number(req.query.year)  : null;
-  const month = req.query.month ? Number(req.query.month) : null;
+  const year       = req.query.year       ? Number(req.query.year)       : null;
+  const month      = req.query.month      ? Number(req.query.month)      : null;
+  const vehicle_id = req.query.vehicle_id ? Number(req.query.vehicle_id) : null;
 
-  let query = 'SELECT * FROM fuel_entries WHERE 1=1';
+  let query = `
+    SELECT fe.*, v.name AS vehicle_name
+    FROM fuel_entries fe
+    LEFT JOIN vehicles v ON fe.vehicle_id = v.id
+    WHERE 1=1
+  `;
   const params: unknown[] = [];
 
   if (year && month) {
     const { start, end } = monthBounds(year, month);
-    query += ' AND date >= ? AND date < ?';
+    query += ' AND fe.date >= ? AND fe.date < ?';
     params.push(start, end);
   } else if (year) {
     const { start, end } = yearBounds(year);
-    query += ' AND date >= ? AND date < ?';
+    query += ' AND fe.date >= ? AND fe.date < ?';
     params.push(start, end);
   }
+  if (vehicle_id) {
+    query += ' AND fe.vehicle_id = ?';
+    params.push(vehicle_id);
+  }
 
-  query += ' ORDER BY date DESC';
+  query += ' ORDER BY fe.date DESC';
   const entries = db.prepare(query).all(...params);
   res.json({ entries });
 });
@@ -77,26 +87,32 @@ router.get('/stats', (req: Request, res: Response) => {
 
 // POST /api/fuel
 router.post('/', (req: Request, res: Response) => {
-  const { date, liters, price_per_liter, total_cost, odometer_km, notes } = req.body;
+  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id } = req.body;
   if (!date || !liters || !price_per_liter || !total_cost) {
     return res.status(400).json({ error: 'date, liters, price_per_liter, total_cost required' });
   }
   const result = db.prepare(
-    `INSERT INTO fuel_entries (date, liters, price_per_liter, total_cost, odometer_km, notes)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null);
-  const entry = db.prepare('SELECT * FROM fuel_entries WHERE id = ?').get(result.lastInsertRowid);
+    `INSERT INTO fuel_entries (date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null);
+  const entry = db.prepare(`
+    SELECT fe.*, v.name AS vehicle_name FROM fuel_entries fe
+    LEFT JOIN vehicles v ON fe.vehicle_id = v.id WHERE fe.id = ?
+  `).get(result.lastInsertRowid);
   res.status(201).json(entry);
 });
 
 // PUT /api/fuel/:id
 router.put('/:id', (req: Request, res: Response) => {
-  const { date, liters, price_per_liter, total_cost, odometer_km, notes } = req.body;
+  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id } = req.body;
   db.prepare(
-    `UPDATE fuel_entries SET date=?, liters=?, price_per_liter=?, total_cost=?, odometer_km=?, notes=?
+    `UPDATE fuel_entries SET date=?, liters=?, price_per_liter=?, total_cost=?, odometer_km=?, notes=?, vehicle_id=?
      WHERE id=?`
-  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, req.params.id);
-  const entry = db.prepare('SELECT * FROM fuel_entries WHERE id = ?').get(req.params.id);
+  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, req.params.id);
+  const entry = db.prepare(`
+    SELECT fe.*, v.name AS vehicle_name FROM fuel_entries fe
+    LEFT JOIN vehicles v ON fe.vehicle_id = v.id WHERE fe.id = ?
+  `).get(req.params.id);
   res.json(entry);
 });
 

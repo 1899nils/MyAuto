@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { api } from '../../api/client';
-import { Trip, TripCategory } from '../../types';
+import { Trip, TripCategory, Vehicle } from '../../types';
 import { formatDate, formatTime, formatKm, formatDuration, categoryLabel, categoryEmoji } from '../../utils/format';
 import { loadGoogleMaps, createPolyline } from '../../utils/maps';
 
@@ -16,11 +16,17 @@ export function TripDetail() {
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState('');
   const [category, setCategory] = useState<TripCategory>('unclassified');
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [noRouteData, setNoRouteData] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
+
+  useEffect(() => {
+    api.getVehicles().then(r => setVehicles(r.vehicles)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!selectedTripId) return;
@@ -29,11 +35,13 @@ export function TripDetail() {
       setTrip(found);
       setNotes(found.notes || '');
       setCategory(found.category);
+      setVehicleId(found.vehicle_id ?? null);
     } else {
       api.getTrip(selectedTripId).then(t => {
         setTrip(t);
         setNotes(t.notes || '');
         setCategory(t.category);
+        setVehicleId(t.vehicle_id ?? null);
       });
     }
   }, [selectedTripId]);
@@ -183,9 +191,9 @@ export function TripDetail() {
     if (!trip) return;
     setSaving(true);
     try {
-      await updateTrip(trip.id, { category, notes });
+      await updateTrip(trip.id, { category, notes, vehicleId });
       setEditing(false);
-      setTrip(prev => prev ? { ...prev, category, notes } : null);
+      setTrip(prev => prev ? { ...prev, category, notes, vehicle_id: vehicleId } : null);
     } finally {
       setSaving(false);
     }
@@ -317,8 +325,21 @@ export function TripDetail() {
               style={{ resize: 'none' }}
             />
           </div>
+          {vehicles.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">Fahrzeug</label>
+              <select
+                className="form-input"
+                value={vehicleId ?? ''}
+                onChange={e => setVehicleId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">– kein Fahrzeug –</option>
+                {vehicles.map(v => <option key={v.id} value={v.id}>{v.name as string}</option>)}
+              </select>
+            </div>
+          )}
           <div className="form-actions">
-            <button className="btn btn-ghost" onClick={() => { setEditing(false); setNotes(trip.notes || ''); setCategory(trip.category); }}>
+            <button className="btn btn-ghost" onClick={() => { setEditing(false); setNotes(trip.notes || ''); setCategory(trip.category); setVehicleId(trip.vehicle_id ?? null); }}>
               Abbrechen
             </button>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>

@@ -15,6 +15,7 @@ import { api, getToken, onUnauthorized } from './api/client';
 
 type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken' | 'karte';
 
+// Desktop sidebar: all views
 const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
   { view: 'dashboard',   icon: '🏠', label: 'Dashboard'    },
   { view: 'history',     icon: '📋', label: 'Fahrten'      },
@@ -22,6 +23,15 @@ const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
   { view: 'statistiken', icon: '📊', label: 'Statistiken'  },
   { view: 'fuel',        icon: '⛽', label: 'Sprit'         },
   { view: 'fahrzeuge',   icon: '🚘', label: 'Fahrzeuge'     },
+  { view: 'settings',    icon: '⚙️', label: 'Einstellungen' },
+];
+
+// Mobile tab bar: max 5 items (Sprit + Karte moved into Fahrzeuge / sidebar)
+const MOBILE_NAV: { view: View; icon: string; label: string }[] = [
+  { view: 'dashboard',   icon: '🏠', label: 'Dashboard'    },
+  { view: 'history',     icon: '📋', label: 'Fahrten'      },
+  { view: 'fahrzeuge',   icon: '🚘', label: 'Fahrzeuge'     },
+  { view: 'statistiken', icon: '📊', label: 'Statistiken'  },
   { view: 'settings',    icon: '⚙️', label: 'Einstellungen' },
 ];
 
@@ -109,7 +119,7 @@ export default function App() {
 
       {/* Mobile Tab Bar */}
       <nav className="tab-bar">
-        {NAV_ITEMS.map(item => (
+        {MOBILE_NAV.map(item => (
           <div
             key={item.view}
             className={`tab-item ${view === item.view ? 'active' : ''}`}

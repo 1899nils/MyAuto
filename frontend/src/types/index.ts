@@ -68,6 +68,8 @@ export interface FuelEntry {
   total_cost: number;
   odometer_km: number | null;
   notes: string | null;
+  vehicle_id?: number | null;
+  vehicle_name?: string | null;
   created_at: number;
 }
 
