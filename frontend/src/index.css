@@ -330,6 +330,7 @@ body::after {
 /* Main content */
 .main-content {
   flex: 1;
+  min-height: 0; /* required for flex children to scroll correctly on mobile */
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--sp-xl);

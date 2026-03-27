@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useFuelStore } from '../../store/fuelStore';
 import { api } from '../../api/client';
-import type { FuelEntry, Vehicle } from '../../types';
+import type { FuelEntry, FuelType, Vehicle } from '../../types';
+import { FUEL_TYPE_LABELS } from '../../types';
 
 type ComputedField = 'liters' | 'pricePerLiter' | 'totalCost';
 
@@ -37,6 +38,7 @@ const emptyForm = (vehicleId?: number) => ({
   notes: '',
   computed: 'totalCost' as ComputedField,
   vehicleId: vehicleId ?? undefined as number | undefined,
+  fuelType: 'super' as FuelType,
 });
 
 export function Spritmonitor() {
@@ -109,6 +111,7 @@ export function Spritmonitor() {
       notes: entry.notes ?? '',
       computed: 'totalCost',
       vehicleId: entry.vehicle_id ?? undefined,
+      fuelType: (entry.fuel_type as FuelType) ?? 'super',
     });
     setEditId(entry.id);
     setShowForm(true);
@@ -130,6 +133,7 @@ export function Spritmonitor() {
       odometer_km: form.odometer ? parseFloat(form.odometer) : null,
       notes: form.notes || null,
       vehicle_id: form.vehicleId ?? null,
+      fuel_type: form.fuelType,
     };
 
     if (editId != null) {
@@ -299,6 +303,22 @@ export function Spritmonitor() {
               )}
             </div>
 
+            {/* Fuel type */}
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Kraftstoff</label>
+                <select
+                  className="form-input"
+                  value={form.fuelType}
+                  onChange={e => setForm(f => ({ ...f, fuelType: e.target.value as FuelType }))}
+                >
+                  {(Object.keys(FUEL_TYPE_LABELS) as FuelType[]).map(k => (
+                    <option key={k} value={k}>{FUEL_TYPE_LABELS[k]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Bidirectional calculation row */}
             <div className="fuel-calc-grid">
               <div className="form-group">
@@ -408,11 +428,18 @@ export function Spritmonitor() {
 
             return (
               <div key={entry.id} className="list-item">
-                <div className="list-item-icon-box fuel">⛽</div>
+                <div className="list-item-icon-box fuel">{entry.fuel_type === 'electric' ? '🔋' : '⛽'}</div>
                 <div className="list-item-body">
-                  <div className="list-item-title">{fmtDate(entry.date)}</div>
+                  <div className="list-item-title">
+                    {fmtDate(entry.date)}
+                    {entry.fuel_type && entry.fuel_type !== 'super' && (
+                      <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.7, fontWeight: 400 }}>
+                        {FUEL_TYPE_LABELS[entry.fuel_type as FuelType] ?? entry.fuel_type}
+                      </span>
+                    )}
+                  </div>
                   <div className="list-item-sub">
-                    {entry.liters.toLocaleString('de-DE', { minimumFractionDigits: 2 })} L
+                    {entry.liters.toLocaleString('de-DE', { minimumFractionDigits: 2 })} {entry.fuel_type === 'electric' ? 'kWh' : 'L'}
                     {' · '}
                     {entry.price_per_liter.toLocaleString('de-DE', { minimumFractionDigits: 3 })} €/L
                     {consumption != null && (

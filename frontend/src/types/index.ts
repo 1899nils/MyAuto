@@ -60,6 +60,18 @@ export interface TripStats {
   activeTrip: Trip | null;
 }
 
+export type FuelType = 'super' | 'super_plus' | 'diesel' | 'lpg' | 'electric' | 'adblue' | 'other';
+
+export const FUEL_TYPE_LABELS: Record<FuelType, string> = {
+  super:      'Super E10',
+  super_plus: 'Super Plus',
+  diesel:     'Diesel',
+  lpg:        'Autogas (LPG)',
+  electric:   'Strom (kWh)',
+  adblue:     'AdBlue',
+  other:      'Sonstiges',
+};
+
 export interface FuelEntry {
   id: number;
   date: number;
@@ -68,6 +80,7 @@ export interface FuelEntry {
   total_cost: number;
   odometer_km: number | null;
   notes: string | null;
+  fuel_type?: FuelType | null;
   vehicle_id?: number | null;
   vehicle_name?: string | null;
   created_at: number;
