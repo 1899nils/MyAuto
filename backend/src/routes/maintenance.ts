@@ -17,16 +17,42 @@ router.get('/', (req: Request, res: Response) => {
   res.json({ entries });
 });
 
-// GET /api/maintenance/due
+// GET /api/maintenance/due – date-based AND km-based fälligkeiten
 router.get('/due', (_req: Request, res: Response) => {
   const now = Date.now();
   const in30Days = now + 30 * 24 * 60 * 60 * 1000;
-  const entries = db.prepare(
-    `SELECT me.*, v.name AS vehicle_name FROM maintenance_entries me
+
+  // Date-based: next_date within 30 days or overdue
+  const byDate = db.prepare(
+    `SELECT me.*, v.name AS vehicle_name, v.odometer_km AS vehicle_odometer
+     FROM maintenance_entries me
      LEFT JOIN vehicles v ON me.vehicle_id = v.id
      WHERE me.next_date IS NOT NULL AND me.next_date <= ?
      ORDER BY me.next_date ASC`
-  ).all(in30Days) as { id: number; next_date: number | null; vehicle_name: string | null }[];
+  ).all(in30Days) as Record<string, unknown>[];
+
+  // km-based: next_odometer_km within 500km of vehicle's current odometer or overdue
+  const byKm = db.prepare(
+    `SELECT me.*, v.name AS vehicle_name, v.odometer_km AS vehicle_odometer
+     FROM maintenance_entries me
+     JOIN vehicles v ON me.vehicle_id = v.id
+     WHERE me.next_odometer_km IS NOT NULL
+       AND v.odometer_km IS NOT NULL
+       AND me.next_odometer_km <= (v.odometer_km + 500)
+       AND (me.next_date IS NULL OR me.next_date > ?)
+     ORDER BY (me.next_odometer_km - v.odometer_km) ASC`
+  ).all(in30Days) as Record<string, unknown>[];
+
+  // Merge, deduplicate by id
+  const seen = new Set<number>();
+  const entries: Record<string, unknown>[] = [];
+  for (const e of [...byDate, ...byKm]) {
+    if (!seen.has(e.id as number)) {
+      seen.add(e.id as number);
+      entries.push(e);
+    }
+  }
+
   res.json({ entries, now });
 });
 
