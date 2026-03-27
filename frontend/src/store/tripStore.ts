@@ -17,7 +17,7 @@ interface TripStore {
   // UI state
   isTracking: boolean;
   classifyModalTrip: Trip | null;
-  view: 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken';
+  view: 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken' | 'karte';
   selectedTripId: number | null;
 
   // Actions

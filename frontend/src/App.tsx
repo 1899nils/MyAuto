@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTripStore } from './store/tripStore';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { ActiveTrip } from './components/ActiveTrip/ActiveTrip';
@@ -9,12 +9,16 @@ import { Spritmonitor } from './components/Spritmonitor/Spritmonitor';
 import { Fahrzeuge } from './components/Fahrzeuge/Fahrzeuge';
 import { Statistiken } from './components/Statistiken/Statistiken';
 import { ClassifyModal } from './components/ui/ClassifyModal';
+import { LoginScreen } from './components/Auth/LoginScreen';
+import { Karte } from './components/Karte/Karte';
+import { api, getToken, onUnauthorized } from './api/client';
 
-type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken';
+type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken' | 'karte';
 
 const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
   { view: 'dashboard',   icon: '🏠', label: 'Dashboard'    },
-  { view: 'history',     icon: '🗺️', label: 'Fahrten'      },
+  { view: 'history',     icon: '📋', label: 'Fahrten'      },
+  { view: 'karte',       icon: '🗺️', label: 'Karte'        },
   { view: 'statistiken', icon: '📊', label: 'Statistiken'  },
   { view: 'fuel',        icon: '⛽', label: 'Sprit'         },
   { view: 'fahrzeuge',   icon: '🚘', label: 'Fahrzeuge'     },
@@ -23,11 +27,32 @@ const NAV_ITEMS: { view: View; icon: string; label: string }[] = [
 
 export default function App() {
   const { view, setView, loadSettings, loadStats, isTracking, classifyModalTrip } = useTripStore();
+  // auth: null = checking, false = need login, true = logged in
+  const [authState, setAuthState] = useState<{ ready: boolean; pinSet: boolean; loggedIn: boolean }>({
+    ready: false, pinSet: false, loggedIn: false,
+  });
 
   useEffect(() => {
+    onUnauthorized(() => setAuthState(s => ({ ...s, loggedIn: false })));
+    api.getAuthStatus().then(({ pinSet }) => {
+      const loggedIn = !pinSet || !!getToken();
+      setAuthState({ ready: true, pinSet, loggedIn });
+      if (!pinSet || loggedIn) {
+        loadSettings();
+        loadStats();
+      }
+    }).catch(() => {
+      setAuthState({ ready: true, pinSet: false, loggedIn: true });
+      loadSettings();
+      loadStats();
+    });
+  }, []);
+
+  function handleLogin() {
+    setAuthState(s => ({ ...s, loggedIn: true }));
     loadSettings();
     loadStats();
-  }, []);
+  }
 
   function renderView() {
     switch (view) {
@@ -39,9 +64,13 @@ export default function App() {
       case 'fuel': return <Spritmonitor />;
       case 'fahrzeuge': return <Fahrzeuge />;
       case 'statistiken': return <Statistiken />;
+      case 'karte': return <Karte />;
       default: return <Dashboard />;
     }
   }
+
+  if (!authState.ready) return null;
+  if (!authState.loggedIn) return <LoginScreen pinSet={authState.pinSet} onLogin={handleLogin} />;
 
   return (
     <div className="app-layout">

@@ -129,7 +129,7 @@ export interface WeekdayDataPoint {
 export interface YearStats {
   year: number;
   totals: { trips: number; km: number; hours: number; avg_km: number; max_km: number };
-  costs: { fuel_eur: number; fuel_liters: number; maintenance_eur: number; maintenance_count: number; total_eur: number };
+  costs: { fuel_eur: number; fuel_liters: number; maintenance_eur: number; maintenance_count: number; total_eur: number; co2_kg: number };
   tax: { business_km: number; pauschale: number };
   monthData: MonthDataPoint[];
   weekdayData: WeekdayDataPoint[];
