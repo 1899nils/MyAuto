@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client';
-import { Vehicle, MaintenanceEntryRaw } from '../../types';
+import { Vehicle, MaintenanceEntryRaw, Trip, FuelEntry } from '../../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -252,6 +252,147 @@ function MaintenanceList({ vehicle, now }: { vehicle: Vehicle; now: number }) {
 
 // ── VehicleCard ───────────────────────────────────────────────────────────────
 
+// ── VehicleTripList ───────────────────────────────────────────────────────────
+
+function VehicleTripList({ vehicleId }: { vehicleId: number }) {
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getTrips({ vehicle_id: vehicleId, limit: 20 })
+      .then(r => setTrips(r.trips))
+      .finally(() => setLoading(false));
+  }, [vehicleId]);
+
+  if (loading) return <p style={{ fontSize: 13, color: 'var(--text-secondary)', padding: 'var(--sp-sm)' }}>Lädt…</p>;
+  if (trips.length === 0) return (
+    <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', padding: 'var(--sp-md)' }}>
+      Noch keine Fahrten mit diesem Fahrzeug
+    </p>
+  );
+
+  const CAT: Record<string, string> = { business: '💼', private: '🏠', unclassified: '❓' };
+  return (
+    <div style={{ marginTop: 'var(--sp-sm)' }}>
+      {trips.map(t => (
+        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 16 }}>{CAT[t.category] ?? '❓'}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {t.start_address?.split(',')[0] ?? new Date(t.start_time).toLocaleDateString('de-DE')}
+              {t.end_address ? ` → ${t.end_address.split(',')[0]}` : ''}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
+              {new Date(t.start_time).toLocaleDateString('de-DE')}
+              {t.distance_km ? ` · ${t.distance_km.toFixed(1)} km` : ''}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── VehicleFuelList ───────────────────────────────────────────────────────────
+
+function VehicleFuelList({ vehicle }: { vehicle: Vehicle }) {
+  const [entries, setEntries] = useState<FuelEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    liters: '', pricePerLiter: '', totalCost: '', odometer: '', notes: '',
+  });
+
+  useEffect(() => {
+    api.getFuelEntries({ vehicle_id: vehicle.id })
+      .then(r => setEntries(r.entries))
+      .finally(() => setLoading(false));
+  }, [vehicle.id]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const l = parseFloat(form.liters), p = parseFloat(form.pricePerLiter), t = parseFloat(form.totalCost);
+    if (isNaN(l) || isNaN(p) || isNaN(t)) return;
+    setSaving(true);
+    const [y, m, d] = form.date.split('-').map(Number);
+    await api.createFuelEntry({
+      date: new Date(y, m - 1, d, 12).getTime(),
+      liters: l, price_per_liter: p, total_cost: t,
+      odometer_km: form.odometer ? parseFloat(form.odometer) : null,
+      notes: form.notes || null,
+      vehicle_id: vehicle.id,
+    });
+    const r = await api.getFuelEntries({ vehicle_id: vehicle.id });
+    setEntries(r.entries);
+    setShowForm(false);
+    setSaving(false);
+    setForm({ date: new Date().toISOString().split('T')[0], liters: '', pricePerLiter: '', totalCost: '', odometer: '', notes: '' });
+  }
+
+  const fmtEur = (v: number) => v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+
+  if (loading) return <p style={{ fontSize: 13, color: 'var(--text-secondary)', padding: 'var(--sp-sm)' }}>Lädt…</p>;
+
+  return (
+    <div style={{ marginTop: 'var(--sp-sm)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
+        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+          ⛽ Tankeinträge ({entries.length})
+        </span>
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(s => !s)}>+ Tanken</button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSave} className="glass" style={{ padding: 'var(--sp-md)', marginBottom: 'var(--sp-sm)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
+          <div className="form-group"><label className="form-label">Datum</label>
+            <input type="date" className="form-input" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required /></div>
+          <div className="form-group"><label className="form-label">Liter</label>
+            <input type="number" step="0.01" className="form-input" placeholder="42.50" value={form.liters}
+              onChange={e => { const l = e.target.value; const p = parseFloat(form.pricePerLiter); setForm(f => ({ ...f, liters: l, totalCost: !isNaN(p) && l ? (parseFloat(l)*p).toFixed(2) : f.totalCost })); }} required /></div>
+          <div className="form-group"><label className="form-label">Preis/L (€)</label>
+            <input type="number" step="0.001" className="form-input" placeholder="1.789" value={form.pricePerLiter}
+              onChange={e => { const p = e.target.value; const l = parseFloat(form.liters); setForm(f => ({ ...f, pricePerLiter: p, totalCost: !isNaN(l) && p ? (l*parseFloat(p)).toFixed(2) : f.totalCost })); }} required /></div>
+          <div className="form-group"><label className="form-label">Gesamt (€)</label>
+            <input type="number" step="0.01" className="form-input" placeholder="76.00" value={form.totalCost}
+              onChange={e => setForm(f => ({ ...f, totalCost: e.target.value }))} required /></div>
+          <div className="form-group"><label className="form-label">km-Stand</label>
+            <input type="number" className="form-input" placeholder="85420" value={form.odometer}
+              onChange={e => setForm(f => ({ ...f, odometer: e.target.value }))} /></div>
+          <div className="form-group"><label className="form-label">Notiz</label>
+            <input className="form-input" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+          <div style={{ gridColumn: '1/-1', display: 'flex', gap: 'var(--sp-sm)', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Abbrechen</button>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>{saving ? '…' : 'Speichern'}</button>
+          </div>
+        </form>
+      )}
+
+      {entries.length === 0 && !showForm && (
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', padding: 'var(--sp-md)' }}>
+          Noch keine Tankeinträge
+        </p>
+      )}
+      {entries.map(e => (
+        <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 16 }}>⛽</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{new Date(e.date).toLocaleDateString('de-DE')}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
+              {e.liters.toFixed(2)} L · {e.price_per_liter.toFixed(3)} €/L
+              {e.odometer_km != null && ` · ${e.odometer_km.toLocaleString('de-DE')} km`}
+            </div>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{fmtEur(e.total_cost)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── VehicleCard ───────────────────────────────────────────────────────────────
+
 function VehicleCard({ vehicle, now, onEdit, onDelete }: {
   vehicle: Vehicle; now: number;
   onEdit: (v: Vehicle) => void;
@@ -259,6 +400,7 @@ function VehicleCard({ vehicle, now, onEdit, onDelete }: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const [delConfirm, setDelConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'wartung' | 'fahrten' | 'sprit'>('wartung');
 
   const subtitle = [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ');
 
@@ -318,10 +460,32 @@ function VehicleCard({ vehicle, now, onEdit, onDelete }: {
         </span>
       </div>
 
-      {/* Expanded: maintenance list */}
+      {/* Expanded: tabbed sub-views */}
       {expanded && (
-        <div style={{ borderTop: '1px solid var(--border)', padding: '0 var(--sp-md) var(--sp-md)' }}>
-          <MaintenanceList vehicle={vehicle} now={now} />
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          {/* Tab bar */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 var(--sp-md)' }}>
+            {(['wartung', 'fahrten', 'sprit'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  background: 'none', border: 'none', padding: '10px 12px',
+                  fontSize: 13, fontWeight: activeTab === tab ? 700 : 400,
+                  color: activeTab === tab ? 'var(--accent)' : 'var(--text-secondary)',
+                  borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                  cursor: 'pointer', marginBottom: -1,
+                }}
+              >
+                {tab === 'wartung' ? '🔧 Wartung' : tab === 'fahrten' ? '📋 Fahrten' : '⛽ Sprit'}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: '0 var(--sp-md) var(--sp-md)' }}>
+            {activeTab === 'wartung' && <MaintenanceList vehicle={vehicle} now={now} />}
+            {activeTab === 'fahrten' && <VehicleTripList vehicleId={vehicle.id} />}
+            {activeTab === 'sprit'   && <VehicleFuelList vehicle={vehicle} />}
+          </div>
         </div>
       )}
     </div>

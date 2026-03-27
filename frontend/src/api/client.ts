@@ -81,7 +81,7 @@ export const api = {
   updateTrip: (id: number, data: Partial<{
     endTime: number; endLat: number; endLng: number; endAddress: string; startAddress: string;
     distanceKm: number; durationSeconds: number; trafficDelaySeconds: number;
-    category: TripCategory; notes: string; routePolyline: string;
+    category: TripCategory; notes: string; routePolyline: string; vehicleId: number | null;
   }>) => req<Trip>(`/trips/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   deleteTrip: (id: number) => req<void>(`/trips/${id}`, { method: 'DELETE' }),
@@ -123,6 +123,22 @@ export const api = {
     }),
 
   deleteVehicle: (id: number) => req<void>(`/vehicles/${id}`, { method: 'DELETE' }),
+
+  // Fuel
+  getFuelEntries: (params?: { year?: number; month?: number; vehicle_id?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.year)       q.set('year',       String(params.year));
+    if (params?.month)      q.set('month',      String(params.month));
+    if (params?.vehicle_id) q.set('vehicle_id', String(params.vehicle_id));
+    return req<{ entries: import('../types').FuelEntry[] }>(`/fuel?${q}`);
+  },
+  getFuelStats: (year?: number) =>
+    req<import('../types').FuelStats>(`/fuel/stats${year ? `?year=${year}` : ''}`),
+  createFuelEntry: (data: Omit<import('../types').FuelEntry, 'id' | 'created_at' | 'vehicle_name'>) =>
+    req<import('../types').FuelEntry>('/fuel', { method: 'POST', body: JSON.stringify(data) }),
+  updateFuelEntry: (id: number, data: Omit<import('../types').FuelEntry, 'id' | 'created_at' | 'vehicle_name'>) =>
+    req<import('../types').FuelEntry>(`/fuel/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFuelEntry: (id: number) => req<void>(`/fuel/${id}`, { method: 'DELETE' }),
 
   // Maintenance
   getMaintenanceEntries: () =>
