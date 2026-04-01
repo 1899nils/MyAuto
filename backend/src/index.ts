@@ -37,13 +37,26 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 // Auth routes (no JWT required)
 app.use('/api/auth', authRouter);
 
+// Parse a named cookie from the raw Cookie header (no external dep needed)
+function parseCookie(cookieHeader: string, name: string): string | null {
+  const match = cookieHeader.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 // JWT guard – only when a PIN is configured
 function authGuard(req: Request, res: Response, next: NextFunction): void {
   const pinRow = db.prepare("SELECT value FROM settings WHERE key='pin_hash'").get() as { value: string } | undefined;
   if (!pinRow) { next(); return; } // no PIN set → open access
 
+  // 1. Try Authorization header (JS clients)
   const header = req.headers.authorization ?? '';
-  const token  = header.startsWith('Bearer ') ? header.slice(7) : '';
+  let token = header.startsWith('Bearer ') ? header.slice(7) : '';
+
+  // 2. Fallback: httpOnly session cookie (browser navigations, mobile)
+  if (!token) {
+    token = parseCookie(req.headers.cookie ?? '', 'myauto_session') ?? '';
+  }
+
   if (!token) { res.status(401).json({ error: 'Nicht angemeldet' }); return; }
   try {
     jwt.verify(token, JWT_SECRET);

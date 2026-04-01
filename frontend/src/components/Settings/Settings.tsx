@@ -387,7 +387,7 @@ export function Settings() {
             {pinState?.pinSet ? '🔑 PIN ändern' : '🔒 PIN einrichten'}
           </button>
           {pinState?.pinSet && (
-            <button className="btn btn-ghost btn-sm" onClick={() => { clearToken(); window.location.reload(); }}>
+            <button className="btn btn-ghost btn-sm" onClick={async () => { clearToken(); window.location.reload(); }}>
               🚪 Abmelden
             </button>
           )}
