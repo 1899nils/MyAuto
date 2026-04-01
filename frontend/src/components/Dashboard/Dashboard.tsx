@@ -5,6 +5,7 @@ import { formatDate, formatTime, formatKm, formatDuration, liveElapsed, category
 import { Trip, MaintenanceEntryRaw, YearStats } from '../../types';
 import { api } from '../../api/client';
 import { resolveAddress } from '../../utils/addressUtils';
+import { Skeleton, SkeletonListItem, SkeletonStatCard } from '../ui/Skeleton';
 
 export function Dashboard() {
   const { stats, trips, settings, activeTrip, isTracking, loadStats, loadTrips, startTrip, endTrip, trackPoints, setView } = useTripStore();
@@ -73,6 +74,27 @@ export function Dashboard() {
   const monthPrivate   = stats?.byCategory.find(c => c.category === 'private');
   const totalMonthKm   = (monthBusiness?.km ?? 0) + (monthPrivate?.km ?? 0);
   const businessPct    = totalMonthKm > 0 ? Math.round(((monthBusiness?.km ?? 0) / totalMonthKm) * 100) : 0;
+
+  // Show skeleton while stats haven't loaded yet
+  if (!stats) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Dashboard</h1>
+            <p className="page-subtitle">{formatDate(Date.now())}</p>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)', marginBottom: 'var(--sp-md)' }}>
+          <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+        </div>
+        <div className="skeleton-card">
+          <Skeleton width="35%" height={12} style={{ marginBottom: 14 }} />
+          {[1,2,3].map(i => <SkeletonListItem key={i} />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { api } from '../../api/client';
 import { YearStats } from '../../types';
+import { Skeleton, SkeletonStatCard } from '../ui/Skeleton';
 
 const YEAR_RANGE = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
 
@@ -67,7 +68,18 @@ export function Statistiken() {
         </div>
       </div>
 
-      {loading && <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Lädt…</div>}
+      {loading && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-sm)', marginBottom: 'var(--sp-md)' }}>
+            <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+            <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+          </div>
+          <div className="skeleton-card" style={{ height: 200, marginBottom: 'var(--sp-md)' }}>
+            <Skeleton width="30%" height={12} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={140} radius={10} />
+          </div>
+        </>
+      )}
 
       {!loading && data && (
         <>
