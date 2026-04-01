@@ -3,6 +3,7 @@ import { useFuelStore } from '../../store/fuelStore';
 import { api } from '../../api/client';
 import type { FuelEntry, FuelType, Vehicle } from '../../types';
 import { FUEL_TYPE_LABELS } from '../../types';
+import { showToast } from '../ui/Toast';
 
 type ComputedField = 'liters' | 'pricePerLiter' | 'totalCost';
 
@@ -147,9 +148,11 @@ export function Spritmonitor() {
     }
     await loadEntries(year, month);
     await loadStats(year);
+    const wasEdit = editId != null;
     setSaving(false);
     setShowForm(false);
     setEditId(null);
+    showToast(wasEdit ? 'Eintrag gespeichert' : 'Tankstopp hinzugefügt');
   }
 
   async function handleDelete(id: number) {
@@ -157,6 +160,7 @@ export function Spritmonitor() {
     await loadEntries(year, month);
     await loadStats(year);
     setDeleteConfirm(null);
+    showToast('Eintrag gelöscht', 'info');
   }
 
   const fmtEur = (v: number) =>

@@ -5,6 +5,7 @@ import { Trip, TripCategory, Vehicle } from '../../types';
 import { formatDate, formatTime, formatKm, formatDuration, categoryLabel, categoryEmoji } from '../../utils/format';
 import { loadGoogleMaps, createPolyline } from '../../utils/maps';
 import { resolveAddress } from '../../utils/addressUtils';
+import { showToast } from '../ui/Toast';
 
 // Small helper to update a trip silently (fire-and-forget, no store re-render needed here)
 async function patchTrip(id: number, data: Parameters<typeof api.updateTrip>[1]) {
@@ -195,6 +196,9 @@ export function TripDetail() {
       await updateTrip(trip.id, { category, notes, vehicleId });
       setEditing(false);
       setTrip(prev => prev ? { ...prev, category, notes, vehicle_id: vehicleId } : null);
+      showToast('Fahrt gespeichert');
+    } catch {
+      showToast('Fehler beim Speichern', 'error');
     } finally {
       setSaving(false);
     }
@@ -203,6 +207,7 @@ export function TripDetail() {
   async function handleDelete() {
     if (!trip) return;
     await deleteTrip(trip.id);
+    showToast('Fahrt gelöscht', 'info');
     setView('history');
   }
 
