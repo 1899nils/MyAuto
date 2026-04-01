@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTripStore } from '../../store/tripStore';
 import { TripCategory, Trip, Vehicle } from '../../types';
 import {
@@ -8,6 +8,7 @@ import {
 import { api } from '../../api/client';
 import { AddressSearch, PlaceResult } from '../ui/AddressSearch';
 import { resolveAddress } from '../../utils/addressUtils';
+import { SkeletonListItem } from '../ui/Skeleton';
 
 // ---- helpers for inline add-form ----
 function toDatetimeLocal(ts: number): string {
@@ -60,6 +61,8 @@ export function TripHistory() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 20;
+  const [tripsLoading, setTripsLoading] = useState(true);
+  const isFirstLoad = useRef(true);
 
   // load vehicles for filter + form
   useEffect(() => { api.getVehicles().then(r => setVehicles(r.vehicles)); }, []);
@@ -110,6 +113,7 @@ export function TripHistory() {
   const periodEnd   = new Date(year, month,     1).getTime();
 
   useEffect(() => {
+    if (isFirstLoad.current) setTripsLoading(true);
     loadTrips({
       category:   filter === 'all' ? undefined : filter,
       vehicle_id: vehicleFilter,
@@ -117,7 +121,7 @@ export function TripHistory() {
       to:         periodEnd,
       limit:      PAGE_SIZE,
       offset:     page * PAGE_SIZE,
-    });
+    }).finally(() => { setTripsLoading(false); isFirstLoad.current = false; });
   }, [filter, vehicleFilter, year, month, page]);
 
   async function handleEnd() {
@@ -443,7 +447,11 @@ export function TripHistory() {
       )}
 
       {/* Trip list */}
-      {trips.length === 0 ? (
+      {tripsLoading ? (
+        <div className="skeleton-card">
+          {[1,2,3,4,5].map(i => <SkeletonListItem key={i} />)}
+        </div>
+      ) : trips.length === 0 ? (
         <div className="glass">
           <div className="empty-state">
             <div className="empty-icon">🗓️</div>

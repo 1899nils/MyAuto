@@ -3,6 +3,7 @@ import { api } from '../../api/client';
 import { Vehicle, MaintenanceEntryRaw, Trip, FuelEntry } from '../../types';
 import { useTripStore } from '../../store/tripStore';
 import { resolveAddress } from '../../utils/addressUtils';
+import { SkeletonListItem, Skeleton } from '../ui/Skeleton';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ function VehicleTripList({ vehicleId }: { vehicleId: number }) {
       .finally(() => setLoading(false));
   }, [vehicleId]);
 
-  if (loading) return <p style={{ fontSize: 13, color: 'var(--text-secondary)', padding: 'var(--sp-sm)' }}>Lädt…</p>;
+  if (loading) return <div style={{ padding: 'var(--sp-sm) 0' }}><SkeletonListItem /><SkeletonListItem /><SkeletonListItem /></div>;
   if (trips.length === 0) return (
     <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', padding: 'var(--sp-md)' }}>
       Noch keine Fahrten mit diesem Fahrzeug
@@ -337,7 +338,7 @@ function VehicleFuelList({ vehicle }: { vehicle: Vehicle }) {
 
   const fmtEur = (v: number) => v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
 
-  if (loading) return <p style={{ fontSize: 13, color: 'var(--text-secondary)', padding: 'var(--sp-sm)' }}>Lädt…</p>;
+  if (loading) return <div style={{ padding: 'var(--sp-sm) 0' }}><SkeletonListItem /><SkeletonListItem /></div>;
 
   return (
     <div style={{ marginTop: 'var(--sp-sm)' }}>
@@ -683,7 +684,19 @@ export function Fahrzeuge() {
         </div>
       )}
 
-      {loading && <div className="glass" style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Lädt…</div>}
+      {loading && (
+        <div className="skeleton-card">
+          {[1,2].map(i => (
+            <div key={i} className="skeleton-row">
+              <Skeleton width={56} height={56} radius={28} style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton width="45%" height={14} />
+                <Skeleton width="30%" height={11} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!loading && vehicles.length === 0 && (
         <div className="glass">
