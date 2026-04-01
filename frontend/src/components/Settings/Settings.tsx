@@ -3,6 +3,7 @@ import { useTripStore } from '../../store/tripStore';
 import { ClassificationRule } from '../../types';
 import { api, clearToken, setToken } from '../../api/client';
 import { useTheme, type Theme } from '../../hooks/useTheme';
+import { showToast } from '../ui/Toast';
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -15,14 +16,12 @@ export function Settings() {
   const [defaultCategory, setDefaultCategory] = useState<'private' | 'business' | 'ask'>('ask');
   const [rules, setRules] = useState<ClassificationRule[]>([]);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [restoreMsg, setRestoreMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const [pinState, setPinState] = useState<{ pinSet: boolean } | null>(null);
   const [newPin, setNewPin] = useState('');
   const [currentPin, setCurrentPin] = useState('');
-  const [pinMsg, setPinMsg] = useState('');
   const { theme, setTheme } = useTheme();
   // Address aliases
   const [aliases, setAliases] = useState<Record<string, string>>({});
@@ -45,15 +44,14 @@ export function Settings() {
   }, []);
 
   async function handlePinSave() {
-    setPinMsg('');
     try {
       const { token } = await api.authSetup(newPin, pinState?.pinSet ? currentPin : undefined);
       setToken(token);
       setPinState({ pinSet: true });
       setNewPin(''); setCurrentPin('');
-      setPinMsg('✓ PIN gespeichert');
+      showToast('PIN gespeichert');
     } catch (e: unknown) {
-      setPinMsg(e instanceof Error ? e.message : 'Fehler');
+      showToast(e instanceof Error ? e.message : 'Fehler', 'error');
     }
   }
 
@@ -81,8 +79,7 @@ export function Settings() {
         classificationRules: rules,
         addressAliases: aliases,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      showToast('Einstellungen gespeichert');
     } finally {
       setSaving(false);
     }
@@ -391,7 +388,6 @@ export function Settings() {
               🚪 Abmelden
             </button>
           )}
-          {pinMsg && <p style={{ fontSize: 13, color: pinMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)' }}>{pinMsg}</p>}
         </div>
       </div>
 
@@ -434,12 +430,12 @@ export function Settings() {
 
       {/* Save button */}
       <button
-        className={`btn btn-full btn-lg ${saved ? 'btn-success' : 'btn-primary'}`}
+        className="btn btn-full btn-lg btn-primary"
         onClick={handleSave}
         disabled={saving}
         style={{ marginBottom: 'var(--sp-xl)' }}
       >
-        {saving ? '⏳ Speichere…' : saved ? '✓ Gespeichert!' : 'Einstellungen speichern'}
+        {saving ? '⏳ Speichere…' : 'Einstellungen speichern'}
       </button>
     </div>
   );
