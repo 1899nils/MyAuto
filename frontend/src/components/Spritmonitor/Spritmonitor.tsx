@@ -40,6 +40,7 @@ const emptyForm = (vehicleId?: number) => ({
   computed: 'totalCost' as ComputedField,
   vehicleId: vehicleId ?? undefined as number | undefined,
   fuelType: 'super' as FuelType,
+  fullTank: true,
 });
 
 export function Spritmonitor() {
@@ -113,6 +114,7 @@ export function Spritmonitor() {
       computed: 'totalCost',
       vehicleId: entry.vehicle_id ?? undefined,
       fuelType: (entry.fuel_type as FuelType) ?? 'super',
+      fullTank: entry.full_tank !== 0,
     });
     setEditId(entry.id);
     setShowForm(true);
@@ -135,6 +137,7 @@ export function Spritmonitor() {
       notes: form.notes || null,
       vehicle_id: form.vehicleId ?? null,
       fuel_type: form.fuelType,
+      full_tank: form.fullTank,
     };
 
     if (editId != null) {
@@ -399,6 +402,16 @@ export function Spritmonitor() {
               </div>
             </div>
 
+            {/* Full tank toggle */}
+            <label className="full-tank-toggle">
+              <input
+                type="checkbox"
+                checked={form.fullTank}
+                onChange={e => setForm(f => ({ ...f, fullTank: e.target.checked }))}
+              />
+              <span>Vollgetankt <span style={{ fontSize: 11, opacity: 0.6 }}>(für genaue Verbrauchsberechnung)</span></span>
+            </label>
+
             <div className="form-actions">
               <button type="button" className="btn btn-ghost" onClick={() => { setShowForm(false); setEditId(null); }}>
                 Abbrechen
@@ -440,6 +453,9 @@ export function Spritmonitor() {
                       <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.7, fontWeight: 400 }}>
                         {FUEL_TYPE_LABELS[entry.fuel_type as FuelType] ?? entry.fuel_type}
                       </span>
+                    )}
+                    {entry.full_tank !== 0 && (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--green)', fontWeight: 500 }}>voll</span>
                     )}
                   </div>
                   <div className="list-item-sub">

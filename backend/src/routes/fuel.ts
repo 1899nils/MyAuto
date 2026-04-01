@@ -58,23 +58,26 @@ router.get('/stats', (req: Request, res: Response) => {
   ).all(start, end) as {
     id: number; date: number; liters: number;
     price_per_liter: number; total_cost: number; odometer_km: number | null;
+    full_tank: number | null;
   }[];
 
   const totalLiters = entries.reduce((s, e) => s + e.liters, 0);
   const totalCost   = entries.reduce((s, e) => s + e.total_cost, 0);
   const avgPrice    = totalLiters > 0 ? totalCost / totalLiters : 0;
 
-  const withOdo = entries.filter(e => e.odometer_km != null);
+  // Consumption: only between consecutive full-tank fill-ups with odometer data
+  const fullTankWithOdo = entries.filter(e => e.full_tank && e.odometer_km != null);
   let avgConsumption: number | null = null;
-  if (withOdo.length >= 2) {
+  if (fullTankWithOdo.length >= 2) {
     let totalKm = 0, totalL = 0;
-    for (let i = 1; i < withOdo.length; i++) {
-      const km = withOdo[i].odometer_km! - withOdo[i - 1].odometer_km!;
-      if (km > 0) { totalKm += km; totalL += withOdo[i].liters; }
+    for (let i = 1; i < fullTankWithOdo.length; i++) {
+      const km = fullTankWithOdo[i].odometer_km! - fullTankWithOdo[i - 1].odometer_km!;
+      if (km > 0) { totalKm += km; totalL += fullTankWithOdo[i].liters; }
     }
     if (totalKm > 0) avgConsumption = (totalL / totalKm) * 100;
   }
 
+  const withOdo = entries.filter(e => e.odometer_km != null);
   const totalKmDriven =
     withOdo.length >= 2
       ? withOdo[withOdo.length - 1].odometer_km! - withOdo[0].odometer_km!
@@ -87,14 +90,14 @@ router.get('/stats', (req: Request, res: Response) => {
 
 // POST /api/fuel
 router.post('/', (req: Request, res: Response) => {
-  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type } = req.body;
+  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type, full_tank } = req.body;
   if (!date || !liters || !price_per_liter || !total_cost) {
     return res.status(400).json({ error: 'date, liters, price_per_liter, total_cost required' });
   }
   const result = db.prepare(
-    `INSERT INTO fuel_entries (date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, fuel_type ?? 'super');
+    `INSERT INTO fuel_entries (date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type, full_tank)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, fuel_type ?? 'super', full_tank ? 1 : 0);
   const entry = db.prepare(`
     SELECT fe.*, v.name AS vehicle_name FROM fuel_entries fe
     LEFT JOIN vehicles v ON fe.vehicle_id = v.id WHERE fe.id = ?
@@ -104,11 +107,11 @@ router.post('/', (req: Request, res: Response) => {
 
 // PUT /api/fuel/:id
 router.put('/:id', (req: Request, res: Response) => {
-  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type } = req.body;
+  const { date, liters, price_per_liter, total_cost, odometer_km, notes, vehicle_id, fuel_type, full_tank } = req.body;
   db.prepare(
-    `UPDATE fuel_entries SET date=?, liters=?, price_per_liter=?, total_cost=?, odometer_km=?, notes=?, vehicle_id=?, fuel_type=?
+    `UPDATE fuel_entries SET date=?, liters=?, price_per_liter=?, total_cost=?, odometer_km=?, notes=?, vehicle_id=?, fuel_type=?, full_tank=?
      WHERE id=?`
-  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, fuel_type ?? 'super', req.params.id);
+  ).run(date, liters, price_per_liter, total_cost, odometer_km ?? null, notes ?? null, vehicle_id ?? null, fuel_type ?? 'super', full_tank ? 1 : 0, req.params.id);
   const entry = db.prepare(`
     SELECT fe.*, v.name AS vehicle_name FROM fuel_entries fe
     LEFT JOIN vehicles v ON fe.vehicle_id = v.id WHERE fe.id = ?

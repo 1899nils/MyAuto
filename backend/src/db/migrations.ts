@@ -29,6 +29,11 @@ export function runMigrations() {
     db.exec("ALTER TABLE fuel_entries ADD COLUMN fuel_type TEXT DEFAULT 'super'");
   }
 
+  // v4: full tank flag (improves consumption accuracy)
+  if (!hasColumn('fuel_entries', 'full_tank')) {
+    db.exec('ALTER TABLE fuel_entries ADD COLUMN full_tank INTEGER DEFAULT 1');
+  }
+
   // Index for new columns
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_trips_vehicle_id ON trips(vehicle_id);

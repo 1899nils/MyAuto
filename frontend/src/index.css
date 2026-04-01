@@ -620,6 +620,22 @@ body {
   text-align: center;
   margin: -8px 0 var(--sp-sm);
 }
+.full-tank-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: var(--sp-sm) 0;
+  user-select: none;
+}
+.full-tank-toggle input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .form-actions {
   display: flex;
   gap: var(--sp-sm);
