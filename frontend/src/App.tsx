@@ -11,6 +11,7 @@ import { Statistiken } from './components/Statistiken/Statistiken';
 import { ClassifyModal } from './components/ui/ClassifyModal';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { Karte } from './components/Karte/Karte';
+import { ToastContainer } from './components/ui/Toast';
 import { api, getToken, onUnauthorized } from './api/client';
 
 type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken' | 'karte';
@@ -145,6 +146,9 @@ export default function App() {
 
       {/* Classify modal */}
       {classifyModalTrip && <ClassifyModal />}
+
+      {/* Global toast notifications */}
+      <ToastContainer />
     </div>
   );
 }
