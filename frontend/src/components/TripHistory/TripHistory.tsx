@@ -45,6 +45,33 @@ const emptyTripForm = () => ({
   vehicleId:  undefined as number | undefined,
 });
 
+const WEEKDAYS = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+
+function groupTripsByDate(trips: Trip[]): { label: string; trips: Trip[] }[] {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const toKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const todayKey = toKey(today);
+  const yestKey  = toKey(yesterday);
+
+  const map = new Map<string, Trip[]>();
+  for (const trip of trips) {
+    const key = toKey(new Date(trip.start_time));
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(trip);
+  }
+
+  return Array.from(map.entries()).map(([key, group]) => {
+    const d = new Date(group[0].start_time);
+    let label: string;
+    if (key === todayKey) label = 'Heute';
+    else if (key === yestKey) label = 'Gestern';
+    else label = `${WEEKDAYS[d.getDay()]}, ${d.getDate()}. ${MONTH_NAMES[d.getMonth()]}`;
+    return { label, trips: group };
+  });
+}
+
 export function TripHistory() {
   const {
     trips, totalTrips, loadTrips, deleteTrip, setView,
@@ -460,56 +487,63 @@ export function TripHistory() {
           </div>
         </div>
       ) : (
-        <div className="glass list-card">
-          {trips.map(trip => (
-            <div
-              key={trip.id}
-              className="list-item"
-              onClick={() => setView('detail', trip.id)}
-            >
-              <div className={`list-item-icon-box ${trip.category}`}>
-                {categoryEmoji(trip.category)}
-              </div>
-              <div className="list-item-body">
-                <div className="list-item-title">
-                  {trip.start_address
-                    ? `${resolveAddress(trip.start_address, aliases)}${trip.end_address ? ` → ${resolveAddress(trip.end_address, aliases)}` : ''}`
-                    : `Fahrt am ${formatDate(trip.start_time)}`}
-                </div>
-                <div className="list-item-sub">
-                  {formatDate(trip.start_time)}, {formatTime(trip.start_time)}
-                  {trip.end_time && ` – ${formatTime(trip.end_time)}`}
-                  {' · '}
-                  <span className={`badge badge-${trip.category}`}>{categoryLabel(trip.category)}</span>
-                </div>
-                {trip.traffic_delay_seconds && trip.traffic_delay_seconds > 120 && (
-                  <div className="list-item-tag" style={{ color: 'var(--orange)' }}>
-                    🚦 +{formatDuration(trip.traffic_delay_seconds)} Stau
+        <>
+          {groupTripsByDate(trips).map(({ label, trips: group }) => (
+            <div key={label} className="trip-date-group">
+              <div className="trip-date-label">{label}</div>
+              <div className="glass list-card">
+                {group.map(trip => (
+                  <div
+                    key={trip.id}
+                    className="list-item"
+                    onClick={() => setView('detail', trip.id)}
+                  >
+                    <div className={`list-item-icon-box ${trip.category}`}>
+                      {categoryEmoji(trip.category)}
+                    </div>
+                    <div className="list-item-body">
+                      <div className="list-item-title">
+                        {trip.start_address
+                          ? `${resolveAddress(trip.start_address, aliases)}${trip.end_address ? ` → ${resolveAddress(trip.end_address, aliases)}` : ''}`
+                          : `Fahrt am ${formatDate(trip.start_time)}`}
+                      </div>
+                      <div className="list-item-sub">
+                        {formatTime(trip.start_time)}
+                        {trip.end_time && ` – ${formatTime(trip.end_time)}`}
+                        {' · '}
+                        <span className={`badge badge-${trip.category}`}>{categoryLabel(trip.category)}</span>
+                      </div>
+                      {trip.traffic_delay_seconds && trip.traffic_delay_seconds > 120 && (
+                        <div className="list-item-tag" style={{ color: 'var(--orange)' }}>
+                          🚦 +{formatDuration(trip.traffic_delay_seconds)} Stau
+                        </div>
+                      )}
+                    </div>
+                    <div className="list-item-end">
+                      {trip.distance_km != null && <div className="list-item-value">{formatKm(trip.distance_km)}</div>}
+                      {trip.duration_seconds != null && <div className="list-item-label">{formatDuration(trip.duration_seconds)}</div>}
+                      <div className="list-item-actions" onClick={e => e.stopPropagation()}>
+                        {deleteConfirm === trip.id ? (
+                          <>
+                            <button className="btn btn-danger btn-sm" onClick={e => handleDelete(e, trip)}>Löschen</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm(null)}>✕</button>
+                          </>
+                        ) : (
+                          <button
+                            className="btn btn-ghost btn-icon btn-sm"
+                            onClick={() => setDeleteConfirm(trip.id)}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="list-item-end">
-                {trip.distance_km != null && <div className="list-item-value">{formatKm(trip.distance_km)}</div>}
-                {trip.duration_seconds != null && <div className="list-item-label">{formatDuration(trip.duration_seconds)}</div>}
-                <div className="list-item-actions" onClick={e => e.stopPropagation()}>
-                  {deleteConfirm === trip.id ? (
-                    <>
-                      <button className="btn btn-danger btn-sm" onClick={e => handleDelete(e, trip)}>Löschen</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm(null)}>✕</button>
-                    </>
-                  ) : (
-                    <button
-                      className="btn btn-ghost btn-icon btn-sm"
-                      onClick={() => setDeleteConfirm(trip.id)}
-                    >
-                      🗑️
-                    </button>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
           ))}
-        </div>
+        </>
       )}
 
       {/* Pagination */}
