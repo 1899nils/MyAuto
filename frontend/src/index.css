@@ -352,6 +352,7 @@ body {
   min-height: 0; /* required for flex children to scroll correctly on mobile */
   overflow-y: auto;
   overflow-x: hidden;
+  position: relative;
   padding: var(--sp-md);
   padding-top: calc(var(--sp-md) + env(safe-area-inset-top));
   /* Platz für Pill (66px) + Gap (8px) im Browser */
@@ -619,6 +620,22 @@ body {
   text-align: center;
   margin: -8px 0 var(--sp-sm);
 }
+.full-tank-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: var(--sp-sm) 0;
+  user-select: none;
+}
+.full-tank-toggle input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .form-actions {
   display: flex;
   gap: var(--sp-sm);
@@ -861,6 +878,31 @@ body {
 .mb-sm { margin-bottom: var(--sp-sm); }
 .mb-md { margin-bottom: var(--sp-md); }
 .w-full { width: 100%; }
+
+/* ── Pull-to-Refresh ── */
+.ptr-indicator {
+  position: absolute;
+  top: calc(var(--ptr-y, 0px) - 44px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  transition: top 0.1s linear;
+  pointer-events: none;
+  z-index: 50;
+}
+.ptr-spinner {
+  width: 24px; height: 24px;
+  border: 2.5px solid var(--separator);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+}
+.ptr-refreshing .ptr-spinner {
+  animation: ptr-spin 0.7s linear infinite;
+}
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ── View Transitions (tab navigation) ── */
 @keyframes vt-fade-out {

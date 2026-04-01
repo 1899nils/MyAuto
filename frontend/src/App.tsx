@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTripStore } from './store/tripStore';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { ActiveTrip } from './components/ActiveTrip/ActiveTrip';
@@ -13,6 +13,7 @@ import { LoginScreen } from './components/Auth/LoginScreen';
 import { Karte } from './components/Karte/Karte';
 import { ToastContainer } from './components/ui/Toast';
 import { api, getToken, onUnauthorized } from './api/client';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
 
 type View = 'dashboard' | 'active' | 'history' | 'detail' | 'settings' | 'fuel' | 'fahrzeuge' | 'statistiken' | 'karte';
 
@@ -38,6 +39,12 @@ const MOBILE_NAV: { view: View; icon: string; label: string }[] = [
 
 export default function App() {
   const { view, setView, loadSettings, loadStats, isTracking, classifyModalTrip } = useTripStore();
+  const mainRef = useRef<HTMLElement>(null);
+
+  async function handleRefresh() {
+    await Promise.all([loadStats(), loadSettings()]);
+  }
+  const { pullY, refreshing } = usePullToRefresh(mainRef, handleRefresh);
 
   function navigate(v: View) {
     if ('startViewTransition' in document) {
@@ -123,8 +130,21 @@ export default function App() {
       </nav>
 
       {/* Main content */}
-      <main className="main-content" style={{ viewTransitionName: 'main-view' }}>
-        {renderView()}
+      <main ref={mainRef} className="main-content" style={{ viewTransitionName: 'main-view' }}>
+        {/* Pull-to-refresh indicator */}
+        <div
+          className={`ptr-indicator${refreshing ? ' ptr-refreshing' : ''}`}
+          style={{ '--ptr-y': `${pullY}px` } as React.CSSProperties}
+          aria-hidden
+        >
+          <div className="ptr-spinner" />
+        </div>
+        <div style={{
+          transform: pullY > 0 ? `translateY(${pullY}px)` : undefined,
+          transition: pullY === 0 ? 'transform 0.3s ease' : undefined,
+        }}>
+          {renderView()}
+        </div>
       </main>
 
       {/* Mobile Tab Bar */}

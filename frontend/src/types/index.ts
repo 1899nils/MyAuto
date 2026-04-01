@@ -83,6 +83,7 @@ export interface FuelEntry {
   odometer_km: number | null;
   notes: string | null;
   fuel_type?: FuelType | null;
+  full_tank?: boolean | number | null;
   vehicle_id?: number | null;
   vehicle_name?: string | null;
   created_at: number;
