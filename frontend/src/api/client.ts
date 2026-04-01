@@ -32,6 +32,8 @@ export function setToken(t: string) {
 export function clearToken() {
   try { localStorage.removeItem(TOKEN_KEY); } catch { /* blocked */ }
   deleteCookie(TOKEN_KEY);
+  // Also clear the httpOnly session cookie via the logout endpoint (fire-and-forget)
+  fetch(`${BASE}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
 }
 
 // Called when any API request returns 401
@@ -43,7 +45,9 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { headers, ...options });
+  // credentials:'include' ensures the httpOnly session cookie is always sent,
+  // even when localStorage/JS-cookie was cleared (mobile browser cache clears etc.)
+  const res = await fetch(`${BASE}${path}`, { credentials: 'include', headers, ...options });
   if (res.status === 401) {
     clearToken();
     _onUnauthorized?.();

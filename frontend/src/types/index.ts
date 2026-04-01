@@ -61,10 +61,11 @@ export interface TripStats {
   activeTrip: Trip | null;
 }
 
-export type FuelType = 'super' | 'super_plus' | 'diesel' | 'lpg' | 'electric' | 'adblue' | 'other';
+export type FuelType = 'super' | 'super_e5' | 'super_plus' | 'diesel' | 'lpg' | 'electric' | 'adblue' | 'other';
 
 export const FUEL_TYPE_LABELS: Record<FuelType, string> = {
   super:      'Super E10',
+  super_e5:   'Super E5',
   super_plus: 'Super Plus',
   diesel:     'Diesel',
   lpg:        'Autogas (LPG)',
