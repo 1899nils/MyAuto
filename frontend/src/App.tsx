@@ -38,6 +38,15 @@ const MOBILE_NAV: { view: View; icon: string; label: string }[] = [
 
 export default function App() {
   const { view, setView, loadSettings, loadStats, isTracking, classifyModalTrip } = useTripStore();
+
+  function navigate(v: View) {
+    if ('startViewTransition' in document) {
+      (document as Document & { startViewTransition: (cb: () => void) => void })
+        .startViewTransition(() => setView(v));
+    } else {
+      setView(v);
+    }
+  }
   // auth: null = checking, false = need login, true = logged in
   const [authState, setAuthState] = useState<{ ready: boolean; pinSet: boolean; loggedIn: boolean }>({
     ready: false, pinSet: false, loggedIn: false,
@@ -95,7 +104,7 @@ export default function App() {
           <div
             key={item.view}
             className={`nav-item ${view === item.view || (item.view === 'history' && view === 'active') ? 'active' : ''}`}
-            onClick={() => setView(item.view)}
+            onClick={() => navigate(item.view)}
           >
             <span className="nav-icon">{item.icon}</span>
             <span>{item.label}</span>
@@ -114,7 +123,7 @@ export default function App() {
       </nav>
 
       {/* Main content */}
-      <main className="main-content">
+      <main className="main-content" style={{ viewTransitionName: 'main-view' }}>
         {renderView()}
       </main>
 
@@ -124,7 +133,7 @@ export default function App() {
           <div
             key={item.view}
             className={`tab-item ${view === item.view ? 'active' : ''}`}
-            onClick={() => setView(item.view)}
+            onClick={() => navigate(item.view)}
           >
             <div className="tab-icon" style={{ position: 'relative' }}>
               {item.icon}
